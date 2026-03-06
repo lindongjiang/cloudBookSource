@@ -11,9 +11,12 @@
         <div class="layui-colla-item">
           <h2 class="layui-colla-title" style="color: red;">文件与标题</h2>
           <div class="layui-colla-content layui-show" style="padding: 10px;">
-            <input type="file" id="file" name="file" accept=".json,application/json" class="layui-input" />
+            <input type="file" id="file" name="file" accept=".json,.xbs,application/json" class="layui-input" />
             <hr />
             <input id="titles" type="text" name="title" placeholder="请输入标题" autocomplete="off" class="layui-input" />
+            <div class="layui-font-12 layui-font-gray" style="margin-top: 8px;">
+              支持上传 <code>.json</code> 和 <code>.xbs</code>。上传 xbs 时会自动转换为 json 并校验后发布。
+            </div>
           </div>
         </div>
 

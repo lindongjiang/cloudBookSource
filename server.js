@@ -5,6 +5,7 @@ const session = require('express-session');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const mysql = require('mysql2/promise');
 const multer = require('multer');
 
@@ -40,6 +41,12 @@ const INSTALL_SHOT_2 =
   process.env.INSTALL_SHOT_2 || '/static/images/install/shot-2-store.jpg';
 const INSTALL_SHOT_3 =
   process.env.INSTALL_SHOT_3 || '/static/images/install/shot-3-done.jpg';
+const PYTHON_BIN = process.env.PYTHON_BIN || '';
+const XBS_TOOL_PATH =
+  process.env.XBS_TOOL_PATH ||
+  '/Users/mantou/Documents/idea/3.2/xiangseSkill/tools/scripts/xbs_tool.py';
+const XBSREBUILD_ROOT =
+  process.env.XBSREBUILD_ROOT || '/Users/mantou/Documents/idea/3.2/xbsrebuild';
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 
@@ -144,11 +151,11 @@ const upload = multer({
   limits: { fileSize: 30 * 1024 * 1024 },
   fileFilter: (_, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase();
-    if (ext === '.json' || file.mimetype.includes('json')) {
+    if (ext === '.json' || ext === '.xbs' || file.mimetype.includes('json')) {
       cb(null, true);
       return;
     }
-    cb(new Error('仅支持 JSON 文件'));
+    cb(new Error('仅支持 JSON / XBS 文件'));
   },
 });
 
@@ -220,6 +227,83 @@ app.post('/index/login/login.html', async (req, res) => {
   };
 
   res.redirect(redirectTo);
+});
+
+app.get('/index/register/register.html', (req, res) => {
+  if (req.session.user) {
+    res.redirect('/yuedu/shuyuan/index.html');
+    return;
+  }
+  res.render('pages/register', {
+    pageTitle: `注册 - ${SITE_NAME}`,
+    currentType: 'none',
+    error: '',
+    form: { username: '', displayName: '' },
+  });
+});
+
+app.post('/index/register/register.html', async (req, res) => {
+  const username = String(req.body.username || '').trim();
+  const displayName = String(req.body.displayName || '').trim();
+  const password = String(req.body.password || '').trim();
+  const confirmPassword = String(req.body.confirmPassword || '').trim();
+
+  if (!/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
+    res.status(400).render('pages/register', {
+      pageTitle: `注册 - ${SITE_NAME}`,
+      currentType: 'none',
+      error: '用户名需为 3-32 位字母/数字/下划线',
+      form: { username, displayName },
+    });
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).render('pages/register', {
+      pageTitle: `注册 - ${SITE_NAME}`,
+      currentType: 'none',
+      error: '密码至少 6 位',
+      form: { username, displayName },
+    });
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    res.status(400).render('pages/register', {
+      pageTitle: `注册 - ${SITE_NAME}`,
+      currentType: 'none',
+      error: '两次密码输入不一致',
+      form: { username, displayName },
+    });
+    return;
+  }
+
+  const exists = await query('select id from users where username = ? limit 1', [username]);
+  if (exists.length > 0) {
+    res.status(409).render('pages/register', {
+      pageTitle: `注册 - ${SITE_NAME}`,
+      currentType: 'none',
+      error: '用户名已存在，请更换',
+      form: { username, displayName },
+    });
+    return;
+  }
+
+  const uid = await allocateNextUid();
+  const finalDisplayName = clipText(displayName || username, 191);
+  const insertResult = await query(
+    'insert into users(uid, username, password, display_name, created_at) values(?, ?, ?, ?, ?)',
+    [uid, username, password, finalDisplayName, Date.now()]
+  );
+
+  req.session.user = {
+    id: insertResult.insertId,
+    uid,
+    username,
+    displayName: finalDisplayName,
+  };
+
+  res.redirect('/yuedu/shuyuan/index.html');
 });
 
 app.get(['/index/logout', '/index/login/logout.html'], (req, res) => {
@@ -304,6 +388,7 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
   }
 
   const jsonUrl = `${req.protocol}://${req.get('host')}/yuedu/${cfg.key}/json/id/${entry.id}.json`;
+  const xbsUrl = `${req.protocol}://${req.get('host')}/yuedu/${cfg.key}/xbs/id/${entry.id}.xbs`;
   const importUrl = `${cfg.importPrefix}${jsonUrl}`;
 
   res.render('pages/detail', {
@@ -312,6 +397,7 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
     cfg,
     entry,
     jsonUrl,
+    xbsUrl,
     importUrl,
     codeDisplay: prettyJson(readEntryRawJson(entry)),
     relativeTime: formatRelativeTime(entry.updated_at),
@@ -412,6 +498,40 @@ app.get('/yuedu/:type/json/id/:id.json', async (req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename=${Date.now()}.json`);
   res.send(JSON.stringify(data, null, 2));
+});
+
+app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
+  const cfg = TYPE_CONFIG[req.params.type];
+  if (!cfg) {
+    next();
+    return;
+  }
+
+  const id = toInt(req.params.id, 0);
+  const entries = await query('select * from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
+    id,
+    cfg.key,
+  ]);
+  const entry = entries[0];
+
+  if (!entry) {
+    res.status(404).json({ code: 0, msg: 'not found' });
+    return;
+  }
+
+  let tempFiles = null;
+  try {
+    const data = JSON.parse(readEntryRawJson(entry));
+    tempFiles = await convertJsonDataToXbs(data);
+    await query('update entries set download_count = download_count + 1 where id = ?', [id]);
+
+    res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, () => {
+      cleanupTempFiles(tempFiles);
+    });
+  } catch (error) {
+    cleanupTempFiles(tempFiles);
+    res.status(500).json({ code: 0, msg: `xbs 生成失败: ${error.message}` });
+  }
 });
 
 app.get('/yuedu/:type/jsons', async (req, res, next) => {
@@ -796,21 +916,33 @@ function buildListQuery(cfg, queryParams) {
 
 async function handleSingleAdd(req, res, cfg) {
   const rawCode = String(req.body.code || '').trim();
-  if (!rawCode) {
-    res.json({ code: 0, msg: '请输入源代码', data: '', url: '', wait: 2 });
-    return;
-  }
-
   let parsed;
-  try {
-    parsed = JSON.parse(rawCode);
-  } catch (_error) {
-    res.json({ code: 0, msg: '请输入正确的源代码!', data: '', url: '', wait: 2 });
+  let convertedFromXbs = false;
+  if (rawCode) {
+    try {
+      parsed = JSON.parse(rawCode);
+    } catch (_error) {
+      res.json({ code: 0, msg: '请输入正确的源代码!', data: '', url: '', wait: 2 });
+      return;
+    }
+  } else if (req.file) {
+    try {
+      const parsedResult = await parseUploadedSourceFile(req.file.path, req.file.originalname);
+      parsed = parsedResult.parsed;
+      convertedFromXbs = parsedResult.convertedFromXbs;
+    } catch (error) {
+      cleanupUploadedFile(req.file);
+      res.json({ code: 0, msg: `上传文件解析失败: ${error.message}`, data: '', url: '', wait: 2 });
+      return;
+    }
+  } else {
+    res.json({ code: 0, msg: '请输入源代码或上传 JSON/XBS 文件', data: '', url: '', wait: 2 });
     return;
   }
 
   const normalizedResult = normalizePayloadByType(cfg.key, parsed);
   if (!normalizedResult.ok) {
+    cleanupUploadedFile(req.file);
     res.json({ code: 0, msg: normalizedResult.errorMessage, data: '', url: '', wait: 2 });
     return;
   }
@@ -873,9 +1005,13 @@ async function handleSingleAdd(req, res, cfg) {
     ]
   );
 
+  cleanupUploadedFile(req.file);
+
   res.json({
     code: 1,
-    msg: normalizedResult.successMessage,
+    msg: convertedFromXbs
+      ? `${normalizedResult.successMessage}（已自动将 XBS 转为 JSON）`
+      : normalizedResult.successMessage,
     data: '',
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
@@ -899,13 +1035,15 @@ async function handleFileAdd(req, res, cfg) {
     return;
   }
 
-  const text = fs.readFileSync(req.file.path, 'utf8');
   let parsed;
+  let convertedFromXbs = false;
   try {
-    parsed = JSON.parse(text);
-  } catch (_error) {
+    const parsedResult = await parseUploadedSourceFile(req.file.path, req.file.originalname);
+    parsed = parsedResult.parsed;
+    convertedFromXbs = parsedResult.convertedFromXbs;
+  } catch (error) {
     cleanupUploadedFile(req.file);
-    res.json({ code: 0, msg: '文件不是有效 JSON', data: '', url: '', wait: 2 });
+    res.json({ code: 0, msg: `上传文件解析失败: ${error.message}`, data: '', url: '', wait: 2 });
     return;
   }
 
@@ -946,11 +1084,128 @@ async function handleFileAdd(req, res, cfg) {
 
   res.json({
     code: 1,
-    msg: normalizedResult.successMessage,
+    msg: convertedFromXbs
+      ? `${normalizedResult.successMessage}（已自动将 XBS 转为 JSON）`
+      : normalizedResult.successMessage,
     data: '',
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
   });
+}
+
+async function allocateNextUid() {
+  const rows = await query('select uid from users order by uid desc limit 1');
+  const base = Number(rows[0]?.uid || 1000);
+  return base + 1;
+}
+
+async function convertXbsFileToJson(xbsPath) {
+  const tempJsonPath = buildTempFilePath('xbs2json', '.json');
+  try {
+    await runXbsTool('xbs2json', xbsPath, tempJsonPath);
+    const text = fs.readFileSync(tempJsonPath, 'utf8');
+    return JSON.parse(text);
+  } finally {
+    cleanupTempFiles({ jsonPath: tempJsonPath });
+  }
+}
+
+async function parseUploadedSourceFile(filePath, originalName) {
+  const ext = path.extname(originalName || filePath).toLowerCase();
+  if (ext === '.xbs') {
+    const parsed = await convertXbsFileToJson(filePath);
+    return { parsed, convertedFromXbs: true };
+  }
+
+  const text = fs.readFileSync(filePath, 'utf8');
+  try {
+    const parsed = JSON.parse(text);
+    return { parsed, convertedFromXbs: false };
+  } catch (_error) {
+    throw new Error('文件不是有效 JSON');
+  }
+}
+
+async function convertJsonDataToXbs(data) {
+  const jsonPath = buildTempFilePath('json2xbs', '.json');
+  const xbsPath = buildTempFilePath('json2xbs', '.xbs');
+  fs.writeFileSync(jsonPath, JSON.stringify(data, null, 2), 'utf8');
+
+  await runXbsTool('json2xbs', jsonPath, xbsPath);
+  return { jsonPath, xbsPath };
+}
+
+function buildTempFilePath(prefix, ext) {
+  const safeExt = String(ext || '').startsWith('.') ? ext : `.${ext}`;
+  return path.join(UPLOAD_DIR, `tmp-${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 10)}${safeExt}`);
+}
+
+async function runXbsTool(action, inputPath, outputPath) {
+  if (!fs.existsSync(XBS_TOOL_PATH)) {
+    throw new Error(`找不到 xbs 转换脚本: ${XBS_TOOL_PATH}`);
+  }
+
+  const pythonCandidates = [PYTHON_BIN, 'python3', 'python']
+    .map((x) => String(x || '').trim())
+    .filter((x, i, arr) => x && arr.indexOf(x) === i);
+
+  let lastError;
+  for (const bin of pythonCandidates) {
+    try {
+      await runProcess(bin, [XBS_TOOL_PATH, action, '-i', inputPath, '-o', outputPath], {
+        env: {
+          ...process.env,
+          XBSREBUILD_ROOT,
+        },
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (error && error.code === 'ENOENT') {
+        continue;
+      }
+    }
+  }
+
+  throw new Error(lastError?.message || '转换命令执行失败');
+}
+
+function runProcess(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      ...options,
+    });
+
+    let stderr = '';
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(stderr.trim() || `${command} exited with code ${code}`));
+    });
+  });
+}
+
+function cleanupTempFiles(files) {
+  if (!files || typeof files !== 'object') return;
+  for (const filePath of Object.values(files)) {
+    if (!filePath || !fs.existsSync(filePath)) continue;
+    try {
+      fs.unlinkSync(filePath);
+    } catch (_error) {
+      // ignore
+    }
+  }
 }
 
 function normalizePayloadByType(type, payload) {

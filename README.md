@@ -4,7 +4,7 @@
 
 - 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除、MT助手安装教程、卡密购买入口
+- 功能：用户注册登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
@@ -35,6 +35,9 @@ MT_MACOS_QR_URL=/static/images/install/qr-mac.png
 INSTALL_SHOT_1=/static/images/install/shot-1-mt.jpg
 INSTALL_SHOT_2=/static/images/install/shot-2-store.jpg
 INSTALL_SHOT_3=/static/images/install/shot-3-done.jpg
+PYTHON_BIN=python3
+XBS_TOOL_PATH=/Users/mantou/Documents/idea/3.2/xiangseSkill/tools/scripts/xbs_tool.py
+XBSREBUILD_ROOT=/Users/mantou/Documents/idea/3.2/xbsrebuild
 
 DB_HOST=127.0.0.1
 DB_PORT=3306
@@ -67,6 +70,12 @@ npm run seed
 - 用户名：`admin`
 - 密码：`admin123`
 
+## XBS 自动转换
+
+- 上传 `.xbs` 文件时会在服务端自动执行 `xbs2json`，再进入规则校验与发布流程。
+- 详情页支持下载 `.xbs`（服务端 `json2xbs` 动态生成）。
+- 如部署环境路径不同，请修改 `.env` 的 `XBS_TOOL_PATH` 与 `XBSREBUILD_ROOT`。
+
 ## 主要路由
 
 - `GET /yuedu/:type/index.html`
@@ -75,9 +84,12 @@ npm run seed
 - `POST /yuedu/:type/add.html`
 - `GET /yuedu/:type/del/id/:id.html`（需登录）
 - `GET /yuedu/:type/json/id/:id.json`
+- `GET /yuedu/:type/xbs/id/:id.xbs`
 - `GET /yuedu/:type/jsons?id=1-2-3`
 - `GET /yuedu/install/index.html`
 - `GET /yuedu/activation/index.html`
+- `GET /index/register/register.html`
+- `POST /index/register/register.html`
 - `GET /index/durl/add.html?data=base64(url)`
 - `GET /d/:hash`
 

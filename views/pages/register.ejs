@@ -1,0 +1,54 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-card login-card">
+    <div class="layui-card-header">用户注册</div>
+    <div class="layui-card-body">
+      <form class="layui-form" method="post" action="/index/register/register.html">
+        <div class="layui-form-item">
+          <label class="layui-form-label">账号</label>
+          <div class="layui-input-block">
+            <input type="text" name="username" required placeholder="3-32位 字母/数字/下划线" autocomplete="off" class="layui-input" value="<%= form.username %>" />
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">昵称</label>
+          <div class="layui-input-block">
+            <input type="text" name="displayName" placeholder="可选，不填则使用账号" autocomplete="off" class="layui-input" value="<%= form.displayName %>" />
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">密码</label>
+          <div class="layui-input-block">
+            <input type="password" name="password" required placeholder="至少6位" autocomplete="off" class="layui-input" />
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">确认密码</label>
+          <div class="layui-input-block">
+            <input type="password" name="confirmPassword" required placeholder="再次输入密码" autocomplete="off" class="layui-input" />
+          </div>
+        </div>
+
+        <% if (error) { %>
+          <div class="layui-form-item">
+            <div class="layui-font-red"><%= error %></div>
+          </div>
+        <% } %>
+
+        <div class="layui-form-item">
+          <button class="layui-btn layui-btn-fluid" type="submit">注 册</button>
+        </div>
+      </form>
+
+      <blockquote class="layui-elem-quote" style="margin-top: 12px;">
+        已有账号？<a href="/index/login/login.html">点此登录</a>
+      </blockquote>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
