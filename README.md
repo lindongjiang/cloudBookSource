@@ -4,7 +4,7 @@
 
 - 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除、安装教程、激活码购买入口
+- 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除、MT助手安装教程、卡密购买入口
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
@@ -25,8 +25,16 @@ cp .env.example .env
 ```env
 SITE_NAME=香色源
 AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
-APP_INSTALL_URL=https://github.com/lindongjiang/xiangseSkill#readme
-ACTIVATION_BUY_URL=https://github.com/lindongjiang/xiangseSkill
+APP_INSTALL_URL=/yuedu/install/index.html
+ACTIVATION_BUY_URL=https://cloudmantoua.top/81/
+MT_WINDOWS_URL=https://wwbhc.lanzn.com/iwFoH3g1r9da
+MT_MACOS_URL=https://wwbhc.lanzn.com/ivLSo3g1tjkj
+CARD_BUY_URL=https://cloudmantoua.top/81/
+MT_WINDOWS_QR_URL=/static/images/install/qr-win.png
+MT_MACOS_QR_URL=/static/images/install/qr-mac.png
+INSTALL_SHOT_1=/static/images/install/shot-1-mt.jpg
+INSTALL_SHOT_2=/static/images/install/shot-2-store.jpg
+INSTALL_SHOT_3=/static/images/install/shot-3-done.jpg
 
 DB_HOST=127.0.0.1
 DB_PORT=3306

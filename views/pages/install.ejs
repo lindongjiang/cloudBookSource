@@ -1,34 +1,221 @@
 <%- include('../partials/header', { pageTitle, currentType }) %>
 
-<div class="layui-container m-top">
-  <div class="layui-panel xi-card">
-    <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
-      <h3>香色闺阁 App 安装教程</h3>
-    </blockquote>
+<style>
+  .install-wrap {
+    margin-top: 14px;
+  }
+  .ios-hero {
+    background: linear-gradient(140deg, #0d1b37 0%, #17305c 45%, #1f3f75 100%);
+    color: #fff;
+    border-radius: 24px;
+    padding: 28px 24px;
+    box-shadow: 0 18px 50px rgba(7, 23, 55, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .ios-hero:after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 220px;
+    height: 220px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  }
+  .ios-hero h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  .ios-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.88);
+  }
+  .ios-tag-list {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ios-tag {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .section-title {
+    margin: 24px 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #18243f;
+  }
+  .download-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .download-card {
+    background: #fff;
+    border: 1px solid #e6ebf4;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 8px 22px rgba(16, 35, 72, 0.08);
+  }
+  .download-card h3 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    color: #132344;
+  }
+  .download-card p {
+    margin: 0;
+    color: #6a7591;
+  }
+  .download-card img {
+    margin-top: 12px;
+    width: 100%;
+    max-width: 220px;
+    border-radius: 14px;
+    border: 1px solid #edf1f8;
+    background: #f6f8fc;
+  }
+  .guide-card {
+    margin-top: 12px;
+    background: #fff;
+    border: 1px solid #e6ebf4;
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 8px 22px rgba(16, 35, 72, 0.08);
+  }
+  .guide-list {
+    margin: 0;
+    padding-left: 20px;
+    color: #1d2a49;
+    line-height: 1.85;
+  }
+  .guide-list strong {
+    color: #0f2f6b;
+  }
+  .shots-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 12px;
+  }
+  .shot-card {
+    background: #fff;
+    border: 1px solid #e6ebf4;
+    border-radius: 16px;
+    padding: 10px;
+    box-shadow: 0 8px 20px rgba(16, 35, 72, 0.08);
+  }
+  .shot-card img {
+    width: 100%;
+    border-radius: 12px;
+    display: block;
+    background: #f7f9fc;
+  }
+  .shot-card p {
+    margin: 8px 0 2px;
+    font-size: 13px;
+    color: #475272;
+  }
+  .install-cta {
+    margin-top: 14px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .install-cta .layui-btn {
+    height: 44px;
+    line-height: 44px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+  .notice {
+    margin-top: 14px;
+    background: #fff6ef;
+    border: 1px solid #ffd8c2;
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: #7b4a24;
+    line-height: 1.75;
+  }
+  @media (max-width: 992px) {
+    .download-grid,
+    .shots-grid,
+    .install-cta {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 
-    <div class="layui-text">
-      <p><strong>步骤 1：</strong>先从官方/可信渠道下载安装香色闺阁 iOS App。</p>
-      <p><strong>步骤 2：</strong>打开 App 后，进入“书源管理”页面。</p>
-      <p><strong>步骤 3：</strong>回到本站，在书源或书源合集里选择目标内容，点击一键导入或复制链接导入。</p>
-      <p><strong>步骤 4：</strong>导入后执行一次搜索测试，确认可用再开始阅读。</p>
+<div class="layui-container install-wrap">
+  <div class="ios-hero">
+    <h1>MT助手（馒头助手）安装教程</h1>
+    <p>AppFlex 国内版本已更名为 MT 助手。需要电脑安装，并支持覆盖安装。</p>
+    <div class="ios-tag-list">
+      <span class="ios-tag">需要电脑</span>
+      <span class="ios-tag">USB 数据线连接 iPhone</span>
+      <span class="ios-tag">支持覆盖安装</span>
+      <span class="ios-tag">卡密解锁下载香色闺阁</span>
     </div>
+  </div>
 
-    <hr />
-
-    <div class="layui-row layui-col-space10">
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.appInstallUrl %>">打开 App 安装地址</a>
-      </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源地址</a>
-      </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源列表</a>
-      </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
-      </div>
+  <h2 class="section-title">下载 MT 助手</h2>
+  <div class="download-grid">
+    <div class="download-card">
+      <h3>Windows 版本</h3>
+      <p>推荐主力环境，安装后可直接连接设备执行安装与覆盖安装。</p>
+      <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.mtWindowsUrl %>">下载 Windows 版</a>
+      <img src="<%= siteMeta.mtWindowsQrUrl %>" alt="Windows 下载二维码" />
     </div>
+    <div class="download-card">
+      <h3>macOS 版本</h3>
+      <p>Mac 用户可直接下载，流程与 Windows 一致。</p>
+      <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.mtMacUrl %>">下载 macOS 版</a>
+      <img src="<%= siteMeta.mtMacQrUrl %>" alt="macOS 下载二维码" />
+    </div>
+  </div>
+
+  <h2 class="section-title">安装步骤</h2>
+  <div class="guide-card">
+    <ol class="guide-list">
+      <li><strong>电脑安装 MT 助手</strong>：根据你的系统下载并安装对应版本。</li>
+      <li><strong>连接手机</strong>：使用数据线连接 iPhone，若弹出密码输入框，输入手机锁屏密码并信任设备。</li>
+      <li><strong>执行安装</strong>：在 MT 助手中安装目标应用，后续更新可直接使用“覆盖安装”。</li>
+      <li><strong>手机端确认</strong>：安装成功后，手机桌面会出现 <strong>MT助手</strong> 图标。</li>
+      <li><strong>输入卡密解锁</strong>：打开 MT 助手，输入购买的卡密，即可下载并安装 <strong>香色闺阁</strong>。</li>
+    </ol>
+  </div>
+
+  <h2 class="section-title">步骤截图</h2>
+  <div class="shots-grid">
+    <div class="shot-card">
+      <img src="<%= siteMeta.installShots[0] %>" alt="步骤截图 1" />
+      <p>步骤图 1：桌面出现 MT 助手</p>
+    </div>
+    <div class="shot-card">
+      <img src="<%= siteMeta.installShots[1] %>" alt="步骤截图 2" />
+      <p>步骤图 2：在 MT 助手内下载应用</p>
+    </div>
+    <div class="shot-card">
+      <img src="<%= siteMeta.installShots[2] %>" alt="步骤截图 3" />
+      <p>步骤图 3：香色闺阁安装完成</p>
+    </div>
+  </div>
+
+  <div class="install-cta">
+    <a class="layui-btn xi-red-btn" target="_blank" href="<%= siteMeta.cardBuyUrl %>">卡密购买地址</a>
+    <a class="layui-btn layui-btn-primary" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a>
+    <a class="layui-btn layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
+  </div>
+
+  <div class="notice">
+    提示：若安装时提示权限或设备未信任，请在手机上允许并重新连接一次；覆盖安装失败时，先重启 MT 助手再重试即可。
   </div>
 </div>
 

@@ -24,6 +24,22 @@ const APP_INSTALL_URL =
   process.env.APP_INSTALL_URL || 'https://github.com/lindongjiang/xiangseSkill#readme';
 const ACTIVATION_BUY_URL =
   process.env.ACTIVATION_BUY_URL || 'https://github.com/lindongjiang/xiangseSkill';
+const MT_WINDOWS_URL =
+  process.env.MT_WINDOWS_URL || 'https://wwbhc.lanzn.com/iwFoH3g1r9da';
+const MT_MACOS_URL =
+  process.env.MT_MACOS_URL || 'https://wwbhc.lanzn.com/ivLSo3g1tjkj';
+const CARD_BUY_URL =
+  process.env.CARD_BUY_URL || 'https://cloudmantoua.top/81/';
+const MT_WINDOWS_QR_URL =
+  process.env.MT_WINDOWS_QR_URL || '/static/images/install/qr-win.png';
+const MT_MACOS_QR_URL =
+  process.env.MT_MACOS_QR_URL || '/static/images/install/qr-mac.png';
+const INSTALL_SHOT_1 =
+  process.env.INSTALL_SHOT_1 || '/static/images/install/shot-1-mt.jpg';
+const INSTALL_SHOT_2 =
+  process.env.INSTALL_SHOT_2 || '/static/images/install/shot-2-store.jpg';
+const INSTALL_SHOT_3 =
+  process.env.INSTALL_SHOT_3 || '/static/images/install/shot-3-done.jpg';
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 
@@ -104,6 +120,12 @@ app.use((req, res, next) => {
     aiBookSourceUrl: AI_BOOKSOURCE_URL,
     appInstallUrl: APP_INSTALL_URL,
     activationBuyUrl: ACTIVATION_BUY_URL,
+    mtWindowsUrl: MT_WINDOWS_URL,
+    mtMacUrl: MT_MACOS_URL,
+    cardBuyUrl: CARD_BUY_URL,
+    mtWindowsQrUrl: MT_WINDOWS_QR_URL,
+    mtMacQrUrl: MT_MACOS_QR_URL,
+    installShots: [INSTALL_SHOT_1, INSTALL_SHOT_2, INSTALL_SHOT_3],
   };
   next();
 });
