@@ -1,0 +1,35 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-panel xi-card">
+    <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
+      <h3>香色闺阁 App 安装教程</h3>
+    </blockquote>
+
+    <div class="layui-text">
+      <p><strong>步骤 1：</strong>先从官方/可信渠道下载安装香色闺阁 iOS App。</p>
+      <p><strong>步骤 2：</strong>打开 App 后，进入“书源管理”页面。</p>
+      <p><strong>步骤 3：</strong>回到本站，在书源或书源合集里选择目标内容，点击一键导入或复制链接导入。</p>
+      <p><strong>步骤 4：</strong>导入后执行一次搜索测试，确认可用再开始阅读。</p>
+    </div>
+
+    <hr />
+
+    <div class="layui-row layui-col-space10">
+      <div class="layui-col-xs12 layui-col-sm6">
+        <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.appInstallUrl %>">打开 App 安装地址</a>
+      </div>
+      <div class="layui-col-xs12 layui-col-sm6">
+        <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源地址</a>
+      </div>
+      <div class="layui-col-xs12 layui-col-sm6">
+        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源列表</a>
+      </div>
+      <div class="layui-col-xs12 layui-col-sm6">
+        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,10 +1,10 @@
-# cloudBookSource
+# 香色源 (cloudBookSource)
 
 一个可运行的源仓库复刻站点（MySQL 版），覆盖原站核心结构与流程：
 
-- 模块：`shuyuan / shuyuans / rss / rsss / tools`
+- 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除
+- 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除、安装教程、激活码购买入口
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
@@ -20,9 +20,14 @@
 cp .env.example .env
 ```
 
-2. 修改 `.env` 中的 MySQL 配置：
+2. 修改 `.env` 中的站点与 MySQL 配置：
 
 ```env
+SITE_NAME=香色源
+AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
+APP_INSTALL_URL=https://github.com/lindongjiang/xiangseSkill#readme
+ACTIVATION_BUY_URL=https://github.com/lindongjiang/xiangseSkill
+
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=root
@@ -63,6 +68,8 @@ npm run seed
 - `GET /yuedu/:type/del/id/:id.html`（需登录）
 - `GET /yuedu/:type/json/id/:id.json`
 - `GET /yuedu/:type/jsons?id=1-2-3`
+- `GET /yuedu/install/index.html`
+- `GET /yuedu/activation/index.html`
 - `GET /index/durl/add.html?data=base64(url)`
 - `GET /d/:hash`
 

@@ -17,6 +17,13 @@ const DB_PORT = Number(process.env.DB_PORT || 3306);
 const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'cloud_book_source';
+const SITE_NAME = process.env.SITE_NAME || '香色源';
+const AI_BOOKSOURCE_URL =
+  process.env.AI_BOOKSOURCE_URL || 'https://github.com/lindongjiang/xiangseSkill';
+const APP_INSTALL_URL =
+  process.env.APP_INSTALL_URL || 'https://github.com/lindongjiang/xiangseSkill#readme';
+const ACTIVATION_BUY_URL =
+  process.env.ACTIVATION_BUY_URL || 'https://github.com/lindongjiang/xiangseSkill';
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 
@@ -60,18 +67,6 @@ const TYPE_CONFIG = {
     kind: 'file',
     importPrefix: 'yuedu://booksource/importonline?src=',
   },
-  rss: {
-    key: 'rss',
-    label: '订阅源',
-    kind: 'single',
-    importPrefix: 'legado://import/auto?src=',
-  },
-  rsss: {
-    key: 'rsss',
-    label: '订阅源合集',
-    kind: 'file',
-    importPrefix: 'legado://import/rssSource?src=',
-  },
 };
 
 const app = express();
@@ -97,6 +92,19 @@ app.use((req, res, next) => {
   res.locals.currentUser = req.session.user || null;
   res.locals.requestUrl = req.originalUrl;
   res.locals.typeConfigMap = TYPE_CONFIG;
+  res.locals.pageLabelMap = {
+    index: '首页',
+    install: '安装教程',
+    activation: '激活码购买',
+    shuyuan: TYPE_CONFIG.shuyuan.label,
+    shuyuans: TYPE_CONFIG.shuyuans.label,
+  };
+  res.locals.siteMeta = {
+    siteName: SITE_NAME,
+    aiBookSourceUrl: AI_BOOKSOURCE_URL,
+    appInstallUrl: APP_INSTALL_URL,
+    activationBuyUrl: ACTIVATION_BUY_URL,
+  };
   next();
 });
 
@@ -126,36 +134,24 @@ app.get('/', (_, res) => {
   res.redirect('/yuedu/index/index.html');
 });
 
-app.get('/article', (_, res) => {
-  res.send('<h2 style="font-family:sans-serif;padding:24px;">文章列表功能可按需扩展</h2>');
-});
-
 app.get('/yuedu/index/index.html', (req, res) => {
   res.render('pages/yuedu-index', {
-    pageTitle: '阅读 - 源仓库',
+    pageTitle: `${SITE_NAME} - 首页`,
     currentType: 'index',
   });
 });
 
-app.get('/yuedu/tools/index.html', (req, res) => {
-  res.render('pages/tools-index', {
-    pageTitle: '阅读 - 其他',
-    currentType: 'tools',
+app.get('/yuedu/install/index.html', (req, res) => {
+  res.render('pages/install', {
+    pageTitle: `${SITE_NAME} - App 安装教程`,
+    currentType: 'install',
   });
 });
 
-app.get('/yuedu/tools/index/id/:slug.html', (req, res) => {
-  const titleMap = {
-    shuyuan: '教程:书源规则',
-    rss: '教程:RSS规则',
-    uplink: '源仓库直链上传',
-  };
-  const title = titleMap[req.params.slug] || '工具文档';
-  res.render('pages/tool-detail', {
-    pageTitle: `${title} - 源仓库`,
-    currentType: 'tools',
-    title,
-    slug: req.params.slug,
+app.get('/yuedu/activation/index.html', (req, res) => {
+  res.render('pages/activation', {
+    pageTitle: `${SITE_NAME} - 激活码购买`,
+    currentType: 'activation',
   });
 });
 
@@ -165,7 +161,7 @@ app.get('/index/login/login.html', (req, res) => {
     return;
   }
   res.render('pages/login', {
-    pageTitle: '登录 - 源仓库',
+    pageTitle: `登录 - ${SITE_NAME}`,
     currentType: 'none',
     error: '',
     redirect: req.query.redirect || '/yuedu/shuyuan/index.html',
@@ -186,7 +182,7 @@ app.post('/index/login/login.html', async (req, res) => {
 
   if (!user) {
     res.status(401).render('pages/login', {
-      pageTitle: '登录 - 源仓库',
+      pageTitle: `登录 - ${SITE_NAME}`,
       currentType: 'none',
       error: '用户名或密码错误',
       redirect: redirectTo,
@@ -243,7 +239,7 @@ app.get('/yuedu/:type/index.html', async (req, res, next) => {
   }));
 
   res.render('pages/list', {
-    pageTitle: `阅读 - ${cfg.label}`,
+    pageTitle: `${SITE_NAME} - ${cfg.label}`,
     currentType: cfg.key,
     cfg,
     entries,
@@ -289,7 +285,7 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
   const importUrl = `${cfg.importPrefix}${jsonUrl}`;
 
   res.render('pages/detail', {
-    pageTitle: `${entry.title} - ${cfg.label}`,
+    pageTitle: `${entry.title} - ${SITE_NAME}`,
     currentType: cfg.key,
     cfg,
     entry,
@@ -309,7 +305,7 @@ app.get('/yuedu/:type/add.html', (req, res, next) => {
 
   const template = cfg.kind === 'single' ? 'pages/add-single' : 'pages/add-file';
   res.render(template, {
-    pageTitle: `阅读 - 新建${cfg.label}`,
+    pageTitle: `${SITE_NAME} - 新建${cfg.label}`,
     currentType: cfg.key,
     cfg,
   });
@@ -656,38 +652,6 @@ async function seedData() {
     });
   }
 
-  for (let i = 0; i < 12; i += 1) {
-    const u = users[i % users.length];
-    const sample = {
-      title: `示例订阅源 ${i + 1}`,
-      url: `https://feed${i + 1}.example.com`,
-      articleStyle: 0,
-      sourceUrl: `https://feed${i + 1}.example.com/rss`,
-      customOrder: i,
-    };
-
-    await insertEntry({
-      type: 'rss',
-      title: `${sample.title} ${sample.url}`,
-      source_url: sample.url,
-      code_text: JSON.stringify(sample, null, 2),
-      content_html: `<p>这是示例订阅源 ${i + 1} 的说明。</p>`,
-      ver: 3,
-      has_faxian: 1,
-      has_sousuo: 1,
-      has_tu: i % 2,
-      has_shengyin: 0,
-      source_count: 1,
-      download_count: 500 + i * 9,
-      author_uid: u.uid,
-      author_name: u.name,
-      file_path: null,
-      file_name: null,
-      created_at: now - i * 7200 * 1000,
-      updated_at: now - i * 7200 * 1000,
-    });
-  }
-
   for (let i = 0; i < 8; i += 1) {
     const u = users[i % users.length];
     const arr = [];
@@ -726,43 +690,6 @@ async function seedData() {
     });
   }
 
-  for (let i = 0; i < 6; i += 1) {
-    const u = users[i % users.length];
-    const arr = [];
-    for (let j = 0; j < 20 + i * 2; j += 1) {
-      arr.push({
-        title: `订阅源条目 ${i + 1}-${j + 1}`,
-        url: `https://rss-set-${i + 1}-${j + 1}.example.com`,
-      });
-    }
-
-    const fileName = `sample-rsss-${i + 1}.json`;
-    const filePath = path.join(UPLOAD_DIR, fileName);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, JSON.stringify(arr, null, 2), 'utf8');
-    }
-
-    await insertEntry({
-      type: 'rsss',
-      title: `示例订阅源合集 ${i + 1}`,
-      source_url: '',
-      code_text: null,
-      content_html: `<p>示例订阅源合集 ${i + 1}</p>`,
-      ver: null,
-      has_faxian: 0,
-      has_sousuo: 0,
-      has_tu: 0,
-      has_shengyin: 0,
-      source_count: arr.length,
-      download_count: 1200 + i * 21,
-      author_uid: u.uid,
-      author_name: u.name,
-      file_path: path.relative(ROOT, filePath).replace(/\\/g, '/'),
-      file_name: fileName,
-      created_at: now - i * 14400 * 1000,
-      updated_at: now - i * 14400 * 1000,
-    });
-  }
 }
 
 async function insertEntry(entry) {
@@ -1009,10 +936,6 @@ function normalizePayloadByType(type, payload) {
     return normalizeXiangseShuyuanPayload(payload);
   }
 
-  if (type === 'rss' || type === 'rsss') {
-    return normalizeXiangseRssPayload(payload);
-  }
-
   return {
     ok: true,
     payload,
@@ -1119,78 +1042,6 @@ function normalizeXiangseShuyuanPayload(payload) {
     return {
       ok: false,
       errorMessage: `书源校验失败: ${errors.slice(0, 5).join('；')}`,
-    };
-  }
-
-  return {
-    ok: true,
-    payload: Array.isArray(payload) ? normalizedList : normalizedList[0],
-    successMessage: buildSuccessMessage(warnings),
-  };
-}
-
-function normalizeXiangseRssPayload(payload) {
-  const list = Array.isArray(payload) ? payload : [payload];
-  if (list.length < 1) {
-    return {
-      ok: false,
-      errorMessage: 'RSS 校验失败: 至少包含 1 条订阅源数据',
-    };
-  }
-
-  const normalizedList = [];
-  const errors = [];
-  const warnings = [];
-
-  list.forEach((item, idx) => {
-    const rowNo = idx + 1;
-    if (!isPlainObject(item)) {
-      errors.push(`第${rowNo}条不是对象`);
-      return;
-    }
-
-    const normalized = { ...item };
-    const sourceName = firstNonEmptyString(normalized.sourceName, normalized.title, normalized.name);
-    if (!sourceName) {
-      errors.push(`第${rowNo}条缺少 sourceName/title`);
-      return;
-    }
-
-    const sourceUrl = firstNonEmptyString(
-      normalized.sourceUrl,
-      normalized.url,
-      normalized.feedUrl,
-      normalized.rssUrl
-    );
-    if (!sourceUrl) {
-      errors.push(`第${rowNo}条缺少 sourceUrl/url`);
-      return;
-    }
-    if (!/^https?:\/\//i.test(sourceUrl)) {
-      errors.push(`第${rowNo}条 sourceUrl 必须是 http/https 地址`);
-      return;
-    }
-
-    normalized.sourceName = sourceName;
-    normalized.sourceUrl = sourceUrl;
-    if (!normalized.title) normalized.title = sourceName;
-    if (!normalized.url) normalized.url = sourceUrl;
-
-    if (typeof normalized.enable !== 'boolean') {
-      normalized.enable = true;
-    }
-
-    normalized.sourceType = normalizeSourceType(normalized.sourceType, null, rowNo, warnings);
-    normalized.weight = normalizeWeight(normalized.weight, rowNo, warnings);
-    normalized.lastModifyTime = normalizeLastModifyTime(normalized.lastModifyTime, rowNo, warnings);
-
-    normalizedList.push(normalized);
-  });
-
-  if (errors.length > 0) {
-    return {
-      ok: false,
-      errorMessage: `RSS 校验失败: ${errors.slice(0, 5).join('；')}`,
     };
   }
 

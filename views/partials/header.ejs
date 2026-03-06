@@ -13,14 +13,18 @@
     <div class="header">
       <div class="layui-container">
         <div class="logo">
-          <a href="/" title="源仓库">源仓库</a>
+          <a href="/yuedu/index/index.html" title="<%= siteMeta.siteName %>">
+            <img src="/static/images/xiangse-logo.png" alt="<%= siteMeta.siteName %> 图标" />
+            <span><%= siteMeta.siteName %></span>
+          </a>
         </div>
         <i class="layui-icon layui-icon-template-1 mobile-icon"></i>
         <div class="nav">
           <ul class="layui-nav menunav">
-            <li class="layui-nav-item layui-this"><a href="/">资源中心</a></li>
-            <li class="layui-nav-item"><a href="/article">文章列表</a></li>
-            <li class="layui-nav-item"><a target="_blank" href="https://example.com">地址发布页(防丢)</a></li>
+            <li class="layui-nav-item <%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
+            <li class="layui-nav-item <%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html">安装教程</a></li>
+            <li class="layui-nav-item <%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html">激活码购买</a></li>
+            <li class="layui-nav-item"><a target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a></li>
           </ul>
         </div>
       </div>
@@ -30,10 +34,9 @@
       <div class="layui-container">
         <div class="homepath">
           <span class="layui-breadcrumb">
-            <a href="/">首页</a>
-            <a href="/yuedu/index/index.html">阅读</a>
+            <a href="/yuedu/index/index.html">首页</a>
             <% if (currentType && currentType !== 'none' && currentType !== 'index') { %>
-              <a><%= typeConfigMap[currentType] ? typeConfigMap[currentType].label : '页面' %></a>
+              <a><%= pageLabelMap[currentType] || '页面' %></a>
             <% } %>
           </span>
         </div>
@@ -55,12 +58,12 @@
         <div class="layui-panel" style="padding: 0px;">
           <div class="layui-tab layui-tab-brief" style="margin: 0;">
             <ul class="layui-tab-title" id="navsub" style="text-align: center; height: auto !important; white-space: normal !important;">
-              <li class="<%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">阅读</a></li>
+              <li class="<%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
               <li class="<%= currentType === 'shuyuan' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuan/index.html">书源</a></li>
               <li class="<%= currentType === 'shuyuans' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuans/index.html">书源合集</a></li>
-              <li class="<%= currentType === 'rss' ? 'layui-this' : '' %>"><a href="/yuedu/rss/index.html">订阅源</a></li>
-              <li class="<%= currentType === 'rsss' ? 'layui-this' : '' %>"><a href="/yuedu/rsss/index.html">订阅源合集</a></li>
-              <li class="<%= currentType === 'tools' ? 'layui-this' : '' %>"><a href="/yuedu/tools/index.html">其他</a></li>
+              <li class="<%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html">安装教程</a></li>
+              <li class="<%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html">激活码购买</a></li>
+              <li><a target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a></li>
             </ul>
           </div>
         </div>
