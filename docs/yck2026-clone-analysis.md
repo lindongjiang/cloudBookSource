@@ -107,7 +107,7 @@
 
 - 后端：`NestJS` 或 `Express + TypeScript`
 - 前端：`Next.js`（SSR）或继续用 `Layui + 模板引擎`
-- 数据库：`PostgreSQL`
+- 数据库：`MySQL 5.7+`
 - ORM：`Prisma`
 - 富文本：`TipTap` / `Quill`（代替 Layedit）
 - 文件存储：`S3/R2`
@@ -152,4 +152,3 @@
 - 内容版权、成人内容、抓取来源合法性要先评估。
 - 需要准备：内容审核机制、违法内容下线机制、举报入口、日志留存。
 - 文件导入与富文本必须做安全处理（JSON 校验、XSS 过滤、上传白名单）。
-

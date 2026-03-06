@@ -17,6 +17,29 @@ const DB_PORT = Number(process.env.DB_PORT || 3306);
 const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'cloud_book_source';
+const MYSQL_MIN_MAJOR = 5;
+const MYSQL_MIN_MINOR = 7;
+
+const XIANGSE_SOURCE_TYPES = new Set(['text', 'comic', 'video', 'audio']);
+const XIANGSE_REQUIRED_ACTIONS = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
+const XIANGSE_XPATH_FIELDS = [
+  'list',
+  'name',
+  'title',
+  'url',
+  'detailUrl',
+  'coverUrl',
+  'intro',
+  'author',
+  'catagory',
+  'category',
+  'status',
+  'wordCount',
+  'updateTime',
+  'lastChapter',
+  'content',
+  'nextPageUrl',
+];
 
 const ONLY_SEED = process.argv.includes('--seed');
 
@@ -489,6 +512,7 @@ async function initMysql() {
     multipleStatements: true,
   });
 
+  await ensureMysql57Compatible(conn);
   await conn.query(
     `create database if not exists \`${DB_NAME}\` character set utf8mb4 collate utf8mb4_unicode_ci`
   );
@@ -836,6 +860,13 @@ async function handleSingleAdd(req, res, cfg) {
     return;
   }
 
+  const normalizedResult = normalizePayloadByType(cfg.key, parsed);
+  if (!normalizedResult.ok) {
+    res.json({ code: 0, msg: normalizedResult.errorMessage, data: '', url: '', wait: 2 });
+    return;
+  }
+
+  parsed = normalizedResult.payload;
   const arr = Array.isArray(parsed) ? parsed : [parsed];
   const first = arr[0] || {};
 
@@ -859,9 +890,11 @@ async function handleSingleAdd(req, res, cfg) {
   const ver = toInt(req.body.ver, 0) || 3;
 
   const hasFaxian = req.body.faxian ? 1 : first.enabledExplore || first.exploreUrl ? 1 : 0;
-  const hasSousuo = req.body.sousuo ? 1 : first.ruleSearch || first.searchUrl ? 1 : 0;
-  const hasTu = req.body.tu ? 1 : 0;
-  const hasShengyin = req.body.shengyin ? 1 : 0;
+  const hasSousuo =
+    req.body.sousuo || first.ruleSearch || first.searchUrl || hasActionRequestInfo(first.searchBook) ? 1 : 0;
+  const sourceType = String(first.sourceType || '').toLowerCase();
+  const hasTu = req.body.tu || sourceType === 'comic' ? 1 : 0;
+  const hasShengyin = req.body.shengyin || sourceType === 'audio' ? 1 : 0;
 
   const now = Date.now();
 
@@ -893,7 +926,7 @@ async function handleSingleAdd(req, res, cfg) {
 
   res.json({
     code: 1,
-    msg: '提交成功',
+    msg: normalizedResult.successMessage,
     data: '',
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
@@ -927,6 +960,16 @@ async function handleFileAdd(req, res, cfg) {
     return;
   }
 
+  const normalizedResult = normalizePayloadByType(cfg.key, parsed);
+  if (!normalizedResult.ok) {
+    cleanupUploadedFile(req.file);
+    res.json({ code: 0, msg: normalizedResult.errorMessage, data: '', url: '', wait: 2 });
+    return;
+  }
+
+  parsed = normalizedResult.payload;
+  fs.writeFileSync(req.file.path, JSON.stringify(parsed, null, 2), 'utf8');
+
   const sourceCount = Array.isArray(parsed) ? parsed.length : 1;
   const contentHtml = clipText(String(req.body.content || '').trim(), 30000);
   const now = Date.now();
@@ -954,11 +997,335 @@ async function handleFileAdd(req, res, cfg) {
 
   res.json({
     code: 1,
-    msg: '提交成功',
+    msg: normalizedResult.successMessage,
     data: '',
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
   });
+}
+
+function normalizePayloadByType(type, payload) {
+  if (type === 'shuyuan' || type === 'shuyuans') {
+    return normalizeXiangseShuyuanPayload(payload);
+  }
+
+  if (type === 'rss' || type === 'rsss') {
+    return normalizeXiangseRssPayload(payload);
+  }
+
+  return {
+    ok: true,
+    payload,
+    successMessage: '提交成功',
+  };
+}
+
+function normalizeXiangseShuyuanPayload(payload) {
+  const list = Array.isArray(payload) ? payload : [payload];
+  if (list.length < 1) {
+    return {
+      ok: false,
+      errorMessage: '书源校验失败: 至少包含 1 条书源数据',
+    };
+  }
+
+  const normalizedList = [];
+  const errors = [];
+  const warnings = [];
+
+  list.forEach((item, idx) => {
+    const rowNo = idx + 1;
+    if (!isPlainObject(item)) {
+      errors.push(`第${rowNo}条不是对象`);
+      return;
+    }
+
+    const normalized = { ...item };
+
+    const sourceName = firstNonEmptyString(
+      normalized.sourceName,
+      normalized.bookSourceName,
+      normalized.title,
+      normalized.name
+    );
+    if (!sourceName) {
+      errors.push(`第${rowNo}条缺少 sourceName`);
+      return;
+    }
+    normalized.sourceName = sourceName;
+
+    const sourceUrl = firstNonEmptyString(
+      normalized.sourceUrl,
+      normalized.bookSourceUrl,
+      normalized.url,
+      normalized.host
+    );
+    if (!sourceUrl) {
+      errors.push(`第${rowNo}条缺少 sourceUrl`);
+      return;
+    }
+    if (!/^https?:\/\//i.test(sourceUrl)) {
+      errors.push(`第${rowNo}条 sourceUrl 必须是 http/https 地址`);
+      return;
+    }
+    normalized.sourceUrl = sourceUrl;
+
+    if (typeof normalized.enable !== 'boolean') {
+      normalized.enable = true;
+    }
+
+    normalized.sourceType = normalizeSourceType(
+      normalized.sourceType,
+      normalized.bookSourceType,
+      rowNo,
+      warnings
+    );
+
+    normalized.weight = normalizeWeight(normalized.weight, rowNo, warnings);
+    normalized.lastModifyTime = normalizeLastModifyTime(normalized.lastModifyTime, rowNo, warnings);
+
+    for (const actionKey of XIANGSE_REQUIRED_ACTIONS) {
+      const actionValue = normalized[actionKey];
+      if (!isPlainObject(actionValue)) {
+        errors.push(`第${rowNo}条缺少动作 ${actionKey}`);
+        continue;
+      }
+
+      const action = { ...actionValue };
+      action.actionID = actionKey;
+      action.parserID = normalizeParserID(action.parserID);
+
+      if (action.responseFormatType === undefined || action.responseFormatType === null) {
+        action.responseFormatType = 'html';
+      } else {
+        action.responseFormatType = String(action.responseFormatType).trim();
+      }
+
+      if (!isValidRequestInfo(action.requestInfo)) {
+        errors.push(`第${rowNo}条 ${actionKey}.requestInfo 不能为空`);
+      }
+
+      if (action.parserID === 'DOM') {
+        patchXiangseDomXPath(action, actionKey, rowNo, warnings);
+      }
+
+      normalized[actionKey] = action;
+    }
+
+    normalizedList.push(normalized);
+  });
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errorMessage: `书源校验失败: ${errors.slice(0, 5).join('；')}`,
+    };
+  }
+
+  return {
+    ok: true,
+    payload: Array.isArray(payload) ? normalizedList : normalizedList[0],
+    successMessage: buildSuccessMessage(warnings),
+  };
+}
+
+function normalizeXiangseRssPayload(payload) {
+  const list = Array.isArray(payload) ? payload : [payload];
+  if (list.length < 1) {
+    return {
+      ok: false,
+      errorMessage: 'RSS 校验失败: 至少包含 1 条订阅源数据',
+    };
+  }
+
+  const normalizedList = [];
+  const errors = [];
+  const warnings = [];
+
+  list.forEach((item, idx) => {
+    const rowNo = idx + 1;
+    if (!isPlainObject(item)) {
+      errors.push(`第${rowNo}条不是对象`);
+      return;
+    }
+
+    const normalized = { ...item };
+    const sourceName = firstNonEmptyString(normalized.sourceName, normalized.title, normalized.name);
+    if (!sourceName) {
+      errors.push(`第${rowNo}条缺少 sourceName/title`);
+      return;
+    }
+
+    const sourceUrl = firstNonEmptyString(
+      normalized.sourceUrl,
+      normalized.url,
+      normalized.feedUrl,
+      normalized.rssUrl
+    );
+    if (!sourceUrl) {
+      errors.push(`第${rowNo}条缺少 sourceUrl/url`);
+      return;
+    }
+    if (!/^https?:\/\//i.test(sourceUrl)) {
+      errors.push(`第${rowNo}条 sourceUrl 必须是 http/https 地址`);
+      return;
+    }
+
+    normalized.sourceName = sourceName;
+    normalized.sourceUrl = sourceUrl;
+    if (!normalized.title) normalized.title = sourceName;
+    if (!normalized.url) normalized.url = sourceUrl;
+
+    if (typeof normalized.enable !== 'boolean') {
+      normalized.enable = true;
+    }
+
+    normalized.sourceType = normalizeSourceType(normalized.sourceType, null, rowNo, warnings);
+    normalized.weight = normalizeWeight(normalized.weight, rowNo, warnings);
+    normalized.lastModifyTime = normalizeLastModifyTime(normalized.lastModifyTime, rowNo, warnings);
+
+    normalizedList.push(normalized);
+  });
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errorMessage: `RSS 校验失败: ${errors.slice(0, 5).join('；')}`,
+    };
+  }
+
+  return {
+    ok: true,
+    payload: Array.isArray(payload) ? normalizedList : normalizedList[0],
+    successMessage: buildSuccessMessage(warnings),
+  };
+}
+
+function normalizeSourceType(sourceType, bookSourceType, rowNo, warnings) {
+  let type = String(sourceType || '').trim().toLowerCase();
+  if (!type) {
+    type = Number(bookSourceType) === 1 ? 'comic' : 'text';
+    warnings.push(`第${rowNo}条已补充 sourceType=${type}`);
+  }
+
+  if (type === 'novel') {
+    type = 'text';
+  }
+
+  if (!XIANGSE_SOURCE_TYPES.has(type)) {
+    warnings.push(`第${rowNo}条 sourceType=${type} 不受支持，已回退为 text`);
+    return 'text';
+  }
+
+  return type;
+}
+
+function normalizeWeight(weight, rowNo, warnings) {
+  let val = Number.parseInt(String(weight ?? ''), 10);
+  if (Number.isNaN(val)) {
+    warnings.push(`第${rowNo}条已补充默认 weight=100`);
+    return 100;
+  }
+
+  if (val < 1) {
+    warnings.push(`第${rowNo}条 weight<1，已调整为 1`);
+    return 1;
+  }
+
+  if (val > 9999) {
+    warnings.push(`第${rowNo}条 weight>9999，已调整为 9999`);
+    return 9999;
+  }
+
+  return val;
+}
+
+function normalizeLastModifyTime(lastModifyTime, rowNo, warnings) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  const raw = String(lastModifyTime ?? '').trim();
+  if (!raw) {
+    warnings.push(`第${rowNo}条已补充 lastModifyTime`);
+    return String(nowSec);
+  }
+
+  const numeric = Number(raw);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    warnings.push(`第${rowNo}条 lastModifyTime 无效，已自动修复`);
+    return String(nowSec);
+  }
+
+  if (numeric > 9999999999) {
+    return String(Math.floor(numeric / 1000));
+  }
+
+  return String(Math.floor(numeric));
+}
+
+function normalizeParserID(parserID) {
+  const parser = String(parserID || 'DOM').trim().toUpperCase();
+  if (parser === 'JS') return 'JS';
+  return 'DOM';
+}
+
+function patchXiangseDomXPath(action, actionKey, rowNo, warnings) {
+  for (const field of XIANGSE_XPATH_FIELDS) {
+    if (typeof action[field] !== 'string') continue;
+    if (action[field].includes('@js:')) continue;
+    if (!action[field].includes('.//')) continue;
+
+    action[field] = action[field].replace(/\.\/\//g, '//');
+    warnings.push(`第${rowNo}条 ${actionKey}.${field} 已将 .// 修正为 //`);
+  }
+}
+
+function buildSuccessMessage(warnings) {
+  if (!warnings || warnings.length < 1) {
+    return '提交成功';
+  }
+  return `提交成功，已自动优化 ${warnings.length} 处香色兼容字段`;
+}
+
+function isValidRequestInfo(requestInfo) {
+  if (typeof requestInfo === 'string') {
+    return requestInfo.trim().length > 0;
+  }
+  if (isPlainObject(requestInfo)) {
+    return Object.keys(requestInfo).length > 0;
+  }
+  return false;
+}
+
+function hasActionRequestInfo(action) {
+  return isPlainObject(action) && isValidRequestInfo(action.requestInfo);
+}
+
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    const text = String(value || '').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+async function ensureMysql57Compatible(conn) {
+  const [rows] = await conn.query('select version() as version');
+  const rawVersion = String(rows[0]?.version || '');
+  const match = rawVersion.match(/(\d+)\.(\d+)/);
+
+  if (!match) {
+    return;
+  }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const isCompatible =
+    major > MYSQL_MIN_MAJOR || (major === MYSQL_MIN_MAJOR && minor >= MYSQL_MIN_MINOR);
+
+  if (!isCompatible) {
+    throw new Error(
+      `当前数据库版本 ${rawVersion} 不兼容，要求 MySQL ${MYSQL_MIN_MAJOR}.${MYSQL_MIN_MINOR}+`
+    );
+  }
 }
 
 function requireLoginJson(req, res, next) {
@@ -1081,6 +1448,10 @@ function toInt(value, fallback) {
   const n = Number.parseInt(String(value || ''), 10);
   if (Number.isNaN(n)) return fallback;
   return n;
+}
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
 }
 
 async function startServer() {

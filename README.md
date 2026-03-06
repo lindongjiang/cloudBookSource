@@ -5,11 +5,12 @@
 - 模块：`shuyuan / shuyuans / rss / rsss / tools`
 - 路由风格：`/yuedu/.../*.html`
 - 功能：列表筛选、分页、详情、JSON 下载、批量短链、一键导入链接、二维码、登录后新增/删除
+- 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
 
 - Node.js 18+
-- MySQL 8.0+
+- MySQL 5.7+（启动时会自动检测版本）
 
 ## 配置
 
