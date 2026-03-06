@@ -2,39 +2,27 @@
 
 <div class="layui-container m-top">
   <div class="layui-card login-card">
-    <div class="layui-card-header">登录</div>
+    <div class="layui-card-header">GitHub 授权登录</div>
     <div class="layui-card-body">
-      <form class="layui-form" method="post" action="/index/login/login.html">
-        <input type="hidden" name="redirect" value="<%= redirect %>" />
+      <div class="layui-text" style="margin-bottom: 16px;">
+        <p>本站已关闭站内注册与账号密码登录，仅支持 GitHub OAuth 授权登录。</p>
+      </div>
 
+      <% if (error) { %>
         <div class="layui-form-item">
-          <label class="layui-form-label">账号</label>
-          <div class="layui-input-block">
-            <input type="text" name="username" required placeholder="请输入账号" autocomplete="off" class="layui-input" />
-          </div>
+          <div class="layui-font-red"><%= error %></div>
         </div>
+      <% } %>
 
+      <% if (githubEnabled) { %>
+        <a class="layui-btn layui-btn-fluid xi-red-btn" href="/index/login/github?redirect=<%= encodeURIComponent(redirect) %>">
+          使用 GitHub 账号登录
+        </a>
+      <% } else { %>
         <div class="layui-form-item">
-          <label class="layui-form-label">密码</label>
-          <div class="layui-input-block">
-            <input type="password" name="password" required placeholder="请输入密码" autocomplete="off" class="layui-input" />
-          </div>
+          <div class="layui-font-orange">管理员尚未配置 GitHub OAuth，请先在 `.env` 中设置 `GITHUB_OAUTH_CLIENT_ID / GITHUB_OAUTH_CLIENT_SECRET`。</div>
         </div>
-
-        <% if (error) { %>
-          <div class="layui-form-item">
-            <div class="layui-font-red"><%= error %></div>
-          </div>
-        <% } %>
-
-        <div class="layui-form-item">
-          <button class="layui-btn layui-btn-fluid" type="submit">登 录</button>
-        </div>
-      </form>
-
-      <blockquote class="layui-elem-quote" style="margin-top: 12px;">
-        演示账号：`admin` / `admin123` ｜ <a href="/index/register/register.html">没有账号？立即注册</a>
-      </blockquote>
+      <% } %>
     </div>
   </div>
 </div>

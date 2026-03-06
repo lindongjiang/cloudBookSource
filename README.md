@@ -4,7 +4,7 @@
 
 - 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：用户注册登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口、`iOS/安卓` 一键模式切换
+- 功能：GitHub OAuth 登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口、`iOS/安卓` 一键模式切换
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
@@ -25,9 +25,14 @@ cp .env.example .env
 ```env
 SITE_NAME=香色源
 SITE_MODE_DEFAULT=ios
+SITE_GITHUB_URL=https://github.com/lindongjiang/cloudBookSource
 AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
 APP_INSTALL_URL=/yuedu/install/index.html
 ACTIVATION_BUY_URL=https://cloudmantoua.top/81/
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+GITHUB_OAUTH_CALLBACK_URL=
+GITHUB_OAUTH_SCOPE=read:user user:email
 ANDROID_SITE_NAME=开源阅读
 ANDROID_APK_URL_PRIMARY=https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.23.110211.apk
 ANDROID_APK_URL_SECONDARY=https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.25.apk
@@ -74,10 +79,13 @@ npm run seed
 
 应用启动时会自动建库建表并自动补种子（若表为空）。
 
-## 演示账号
+## GitHub 登录说明
 
-- 用户名：`admin`
-- 密码：`admin123`
+- 已关闭站内注册和密码登录。
+- 需要先在 GitHub 创建 OAuth App，并填写 `.env`：
+  - `GITHUB_OAUTH_CLIENT_ID`
+  - `GITHUB_OAUTH_CLIENT_SECRET`
+  - `GITHUB_OAUTH_CALLBACK_URL`（可留空，默认自动按当前域名拼接 `/index/login/github/callback`）
 
 ## XBS 自动转换
 
@@ -97,9 +105,11 @@ npm run seed
 - `GET /yuedu/:type/jsons?id=1-2-3`
 - `GET /yuedu/install/index.html`
 - `GET /yuedu/activation/index.html`
+- `GET /index/login/github`
+- `GET /index/login/github/callback`
 - `GET /index/site-mode/switch?mode=ios|android&redirect=...`
 - `GET /index/register/register.html`
-- `POST /index/register/register.html`
+- `POST /index/register/register.html`（已停用，自动跳转到 GitHub 登录）
 - `GET /index/durl/add.html?data=base64(url)`
 - `GET /d/:hash`
 

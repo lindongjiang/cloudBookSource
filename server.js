@@ -31,6 +31,12 @@ const MT_MACOS_URL =
   process.env.MT_MACOS_URL || 'https://wwbhc.lanzn.com/ivLSo3g1tjkj';
 const CARD_BUY_URL =
   process.env.CARD_BUY_URL || 'https://cloudmantoua.top/81/';
+const SITE_GITHUB_URL =
+  process.env.SITE_GITHUB_URL || 'https://github.com/lindongjiang/cloudBookSource';
+const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID || '';
+const GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET || '';
+const GITHUB_OAUTH_CALLBACK_URL = process.env.GITHUB_OAUTH_CALLBACK_URL || '';
+const GITHUB_OAUTH_SCOPE = process.env.GITHUB_OAUTH_SCOPE || 'read:user user:email';
 const ANDROID_SITE_NAME = process.env.ANDROID_SITE_NAME || '开源阅读';
 const ANDROID_APK_URL_PRIMARY =
   process.env.ANDROID_APK_URL_PRIMARY ||
@@ -67,6 +73,7 @@ const XBSREBUILD_ROOT =
   process.env.XBSREBUILD_ROOT || '/Users/mantou/Documents/idea/3.2/xbsrebuild';
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
+const IS_GITHUB_AUTH_ENABLED = Boolean(GITHUB_OAUTH_CLIENT_ID && GITHUB_OAUTH_CLIENT_SECRET);
 
 const XIANGSE_SOURCE_TYPES = new Set(['text', 'comic', 'video', 'audio']);
 const XIANGSE_REQUIRED_ACTIONS = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
@@ -220,6 +227,8 @@ app.use((req, res, next) => {
     ...baseMeta,
     siteName: baseMeta.siteName,
     logoUrl: baseMeta.logoUrl,
+    siteGithubUrl: SITE_GITHUB_URL,
+    githubAuthEnabled: IS_GITHUB_AUTH_ENABLED,
     modeSwitch: {
       targetMode: switchMeta.key,
       label: switchMeta.siteName,
@@ -302,121 +311,102 @@ app.get('/index/login/login.html', (req, res) => {
     res.redirect(req.query.redirect || '/yuedu/shuyuan/index.html');
     return;
   }
+
   res.render('pages/login', {
     pageTitle: `登录 - ${res.locals.siteMeta.siteName}`,
     currentType: 'none',
-    error: '',
-    redirect: req.query.redirect || '/yuedu/shuyuan/index.html',
+    error: resolveLoginErrorMessage(req.query.error),
+    redirect: normalizeRedirectPath(req.query.redirect),
+    githubEnabled: IS_GITHUB_AUTH_ENABLED,
   });
 });
 
-app.post('/index/login/login.html', async (req, res) => {
-  const username = String(req.body.username || '').trim();
-  const password = String(req.body.password || '').trim();
-  const redirectTo = String(req.body.redirect || '/yuedu/shuyuan/index.html');
+app.post('/index/login/login.html', (req, res) => {
+  const redirect = normalizeRedirectPath(req.body.redirect || '/yuedu/shuyuan/index.html');
+  res.redirect(`/index/login/login.html?redirect=${encodeURIComponent(redirect)}&error=github_only`);
+});
 
-  const users = await query(
-    'select id, uid, username, display_name from users where username = ? and password = ? limit 1',
-    [username, password]
-  );
-
-  const user = users[0];
-
-  if (!user) {
-    res.status(401).render('pages/login', {
-      pageTitle: `登录 - ${res.locals.siteMeta.siteName}`,
-      currentType: 'none',
-      error: '用户名或密码错误',
-      redirect: redirectTo,
-    });
+app.get('/index/login/github', (req, res) => {
+  if (!IS_GITHUB_AUTH_ENABLED) {
+    const redirect = normalizeRedirectPath(req.query.redirect);
+    res.redirect(`/index/login/login.html?redirect=${encodeURIComponent(redirect)}&error=github_not_configured`);
     return;
   }
 
-  req.session.user = {
-    id: user.id,
-    uid: user.uid,
-    username: user.username,
-    displayName: user.display_name,
-  };
+  const state = crypto.randomBytes(24).toString('hex');
+  const redirect = normalizeRedirectPath(req.query.redirect);
 
-  res.redirect(redirectTo);
+  req.session.githubOauthState = state;
+  req.session.githubOauthRedirect = redirect;
+
+  const authUrl = new URL('https://github.com/login/oauth/authorize');
+  authUrl.searchParams.set('client_id', GITHUB_OAUTH_CLIENT_ID);
+  authUrl.searchParams.set('redirect_uri', buildGithubOauthCallbackUrl(req));
+  authUrl.searchParams.set('scope', GITHUB_OAUTH_SCOPE);
+  authUrl.searchParams.set('state', state);
+  res.redirect(authUrl.toString());
+});
+
+app.get('/index/login/github/callback', async (req, res) => {
+  if (!IS_GITHUB_AUTH_ENABLED) {
+    res.redirect('/index/login/login.html?error=github_not_configured');
+    return;
+  }
+
+  if (req.query.error) {
+    res.redirect('/index/login/login.html?error=github_oauth_denied');
+    return;
+  }
+
+  const callbackState = String(req.query.state || '').trim();
+  if (!callbackState || callbackState !== String(req.session.githubOauthState || '').trim()) {
+    req.session.githubOauthState = '';
+    res.redirect('/index/login/login.html?error=github_state_invalid');
+    return;
+  }
+
+  const code = String(req.query.code || '').trim();
+  if (!code) {
+    res.redirect('/index/login/login.html?error=github_no_code');
+    return;
+  }
+
+  const redirectTo = normalizeRedirectPath(req.session.githubOauthRedirect);
+  req.session.githubOauthState = '';
+  req.session.githubOauthRedirect = '';
+
+  try {
+    const githubToken = await exchangeGithubAccessToken(req, code, callbackState);
+    const githubUser = await fetchGithubUserProfile(githubToken);
+    const githubEmail = await fetchGithubUserPrimaryEmail(githubToken);
+    const user = await createOrUpdateGithubUser(githubUser, githubEmail);
+
+    req.session.user = {
+      id: user.id,
+      uid: user.uid,
+      username: user.username,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url || '',
+    };
+
+    res.redirect(redirectTo);
+    return;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('GitHub OAuth failed:', error);
+    res.redirect('/index/login/login.html?error=github_exchange_failed');
+    return;
+  }
 });
 
 app.get('/index/register/register.html', (req, res) => {
-  if (req.session.user) {
-    res.redirect('/yuedu/shuyuan/index.html');
-    return;
-  }
-  res.render('pages/register', {
-    pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
-    currentType: 'none',
-    error: '',
-    form: { username: '', displayName: '' },
-  });
+  const redirect = normalizeRedirectPath(req.query.redirect || '/yuedu/shuyuan/index.html');
+  res.redirect(`/index/login/login.html?redirect=${encodeURIComponent(redirect)}&error=register_disabled`);
 });
 
-app.post('/index/register/register.html', async (req, res) => {
-  const username = String(req.body.username || '').trim();
-  const displayName = String(req.body.displayName || '').trim();
-  const password = String(req.body.password || '').trim();
-  const confirmPassword = String(req.body.confirmPassword || '').trim();
-
-  if (!/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
-    res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
-      currentType: 'none',
-      error: '用户名需为 3-32 位字母/数字/下划线',
-      form: { username, displayName },
-    });
-    return;
-  }
-
-  if (password.length < 6) {
-    res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
-      currentType: 'none',
-      error: '密码至少 6 位',
-      form: { username, displayName },
-    });
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
-      currentType: 'none',
-      error: '两次密码输入不一致',
-      form: { username, displayName },
-    });
-    return;
-  }
-
-  const exists = await query('select id from users where username = ? limit 1', [username]);
-  if (exists.length > 0) {
-    res.status(409).render('pages/register', {
-      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
-      currentType: 'none',
-      error: '用户名已存在，请更换',
-      form: { username, displayName },
-    });
-    return;
-  }
-
-  const uid = await allocateNextUid();
-  const finalDisplayName = clipText(displayName || username, 191);
-  const insertResult = await query(
-    'insert into users(uid, username, password, display_name, created_at) values(?, ?, ?, ?, ?)',
-    [uid, username, password, finalDisplayName, Date.now()]
-  );
-
-  req.session.user = {
-    id: insertResult.insertId,
-    uid,
-    username,
-    displayName: finalDisplayName,
-  };
-
-  res.redirect('/yuedu/shuyuan/index.html');
+app.post('/index/register/register.html', (req, res) => {
+  const redirect = normalizeRedirectPath(req.body.redirect || '/yuedu/shuyuan/index.html');
+  res.redirect(`/index/login/login.html?redirect=${encodeURIComponent(redirect)}&error=register_disabled`);
 });
 
 app.get(['/index/logout', '/index/login/logout.html'], (req, res) => {
@@ -795,12 +785,20 @@ async function initDb() {
       username varchar(191) not null,
       password varchar(191) not null,
       display_name varchar(191) not null,
+      github_id varchar(64) null,
+      github_login varchar(191) null,
+      github_email varchar(191) null,
+      avatar_url text null,
+      profile_url text null,
       created_at bigint not null,
       primary key (id),
       unique key uk_users_uid (uid),
-      unique key uk_users_username (username)
+      unique key uk_users_username (username),
+      unique key uk_users_github_id (github_id)
     ) engine=InnoDB default charset=utf8mb4
   `);
+
+  await ensureUsersOauthColumns();
 
   await query(`
     create table if not exists entries (
@@ -844,20 +842,39 @@ async function initDb() {
   `);
 }
 
-async function seedData() {
-  const userCountRows = await query('select count(*) as c from users');
-  const userCount = Number(userCountRows[0]?.c || 0);
+async function ensureUsersOauthColumns() {
+  const cols = await query('show columns from users');
+  const columnNames = new Set(cols.map((x) => String(x.Field || '').toLowerCase()));
 
-  if (userCount < 1) {
-    await query('insert into users(uid, username, password, display_name, created_at) values(?, ?, ?, ?, ?)', [
-      1000,
-      'admin',
-      'admin123',
-      '管理员',
-      Date.now(),
-    ]);
+  const alterSqlList = [];
+  if (!columnNames.has('github_id')) {
+    alterSqlList.push('add column github_id varchar(64) null after display_name');
+  }
+  if (!columnNames.has('github_login')) {
+    alterSqlList.push('add column github_login varchar(191) null after github_id');
+  }
+  if (!columnNames.has('github_email')) {
+    alterSqlList.push('add column github_email varchar(191) null after github_login');
+  }
+  if (!columnNames.has('avatar_url')) {
+    alterSqlList.push('add column avatar_url text null after github_email');
+  }
+  if (!columnNames.has('profile_url')) {
+    alterSqlList.push('add column profile_url text null after avatar_url');
   }
 
+  for (const sql of alterSqlList) {
+    await query(`alter table users ${sql}`);
+  }
+
+  const indexes = await query('show index from users');
+  const indexNames = new Set(indexes.map((x) => String(x.Key_name || '')));
+  if (!indexNames.has('uk_users_github_id')) {
+    await query('alter table users add unique key uk_users_github_id (github_id)');
+  }
+}
+
+async function seedData() {
   const countRows = await query('select count(*) as c from entries');
   const count = Number(countRows[0]?.c || 0);
   if (count > 0) {
@@ -1212,6 +1229,33 @@ async function allocateNextUid() {
   return base + 1;
 }
 
+async function allocateUniqueUsername(baseName) {
+  const seed = normalizeUsernameSeed(baseName);
+  let suffix = 0;
+
+  while (suffix < 9999) {
+    const candidate = suffix === 0 ? seed : clipText(`${seed}_${suffix}`, 191);
+    const existed = await query('select id from users where username = ? limit 1', [candidate]);
+    if (existed.length < 1) {
+      return candidate;
+    }
+    suffix += 1;
+  }
+
+  return clipText(`github_${Date.now()}`, 191);
+}
+
+function normalizeUsernameSeed(raw) {
+  const cleaned = String(raw || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^[_-]+|[_-]+$/g, '');
+  if (!cleaned) {
+    return 'github_user';
+  }
+  return clipText(cleaned, 191);
+}
+
 async function convertXbsFileToJson(xbsPath) {
   const tempJsonPath = buildTempFilePath('xbs2json', '.json');
   try {
@@ -1546,6 +1590,158 @@ function firstNonEmptyString(...values) {
     if (text) return text;
   }
   return '';
+}
+
+function resolveLoginErrorMessage(code) {
+  const key = String(code || '').trim();
+  const map = {
+    github_only: '本站仅支持 GitHub 授权登录',
+    register_disabled: '已关闭站内注册，请使用 GitHub 登录',
+    github_not_configured: '管理员尚未配置 GitHub OAuth，请联系站点维护者',
+    github_oauth_denied: '你已取消 GitHub 授权',
+    github_state_invalid: 'GitHub 登录状态校验失败，请重试',
+    github_no_code: 'GitHub 回调缺少授权参数，请重试',
+    github_exchange_failed: 'GitHub 登录失败，请稍后重试',
+  };
+  return map[key] || '';
+}
+
+function buildGithubOauthCallbackUrl(req) {
+  const configured = String(GITHUB_OAUTH_CALLBACK_URL || '').trim();
+  if (configured) {
+    if (/^https?:\/\//i.test(configured)) {
+      return configured;
+    }
+    if (configured.startsWith('/')) {
+      return `${req.protocol}://${req.get('host')}${configured}`;
+    }
+  }
+  return `${req.protocol}://${req.get('host')}/index/login/github/callback`;
+}
+
+async function exchangeGithubAccessToken(req, code, state) {
+  const response = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'User-Agent': 'cloudBookSource',
+    },
+    body: JSON.stringify({
+      client_id: GITHUB_OAUTH_CLIENT_ID,
+      client_secret: GITHUB_OAUTH_CLIENT_SECRET,
+      code,
+      redirect_uri: buildGithubOauthCallbackUrl(req),
+      state,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`GitHub token response ${response.status}: ${JSON.stringify(data)}`);
+  }
+
+  const token = String(data.access_token || '').trim();
+  if (!token || data.error) {
+    throw new Error(`GitHub token exchange failed: ${data.error_description || data.error || 'empty_token'}`);
+  }
+
+  return token;
+}
+
+async function fetchGithubUserProfile(accessToken) {
+  const response = await fetch('https://api.github.com/user', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${accessToken}`,
+      'User-Agent': 'cloudBookSource',
+    },
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`GitHub user profile failed: ${response.status}`);
+  }
+
+  if (!data || !data.id || !data.login) {
+    throw new Error('GitHub user profile incomplete');
+  }
+
+  return data;
+}
+
+async function fetchGithubUserPrimaryEmail(accessToken) {
+  const response = await fetch('https://api.github.com/user/emails', {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${accessToken}`,
+      'User-Agent': 'cloudBookSource',
+    },
+  });
+
+  if (!response.ok) {
+    return '';
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    return '';
+  }
+
+  const preferred =
+    data.find((item) => item && item.primary && item.verified && item.email) ||
+    data.find((item) => item && item.verified && item.email) ||
+    data.find((item) => item && item.email);
+
+  return clipText(String(preferred?.email || ''), 191);
+}
+
+async function createOrUpdateGithubUser(githubUser, githubEmail) {
+  const githubId = clipText(String(githubUser.id || ''), 64);
+  if (!githubId) {
+    throw new Error('GitHub user id missing');
+  }
+
+  const githubLogin = clipText(String(githubUser.login || ''), 191);
+  const displayName = clipText(String(githubUser.name || githubLogin || `GitHub-${githubId}`), 191);
+  const avatarUrl = clipText(String(githubUser.avatar_url || ''), 2048);
+  const profileUrl = clipText(String(githubUser.html_url || ''), 2048);
+  const now = Date.now();
+
+  const existed = await query(
+    'select id, uid, username, display_name, avatar_url from users where github_id = ? limit 1',
+    [githubId]
+  );
+
+  if (existed.length > 0) {
+    const user = existed[0];
+    await query(
+      'update users set display_name = ?, github_login = ?, github_email = ?, avatar_url = ?, profile_url = ? where id = ?',
+      [displayName, githubLogin, githubEmail, avatarUrl, profileUrl, user.id]
+    );
+    return {
+      ...user,
+      display_name: displayName,
+      avatar_url: avatarUrl,
+    };
+  }
+
+  const uid = await allocateNextUid();
+  const username = await allocateUniqueUsername(githubLogin || `github_${githubId}`);
+  const password = `oauth:${crypto.randomBytes(20).toString('hex')}`;
+
+  const result = await query(
+    'insert into users(uid, username, password, display_name, github_id, github_login, github_email, avatar_url, profile_url, created_at) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [uid, username, password, displayName, githubId, githubLogin, githubEmail, avatarUrl, profileUrl, now]
+  );
+
+  return {
+    id: result.insertId,
+    uid,
+    username,
+    display_name: displayName,
+    avatar_url: avatarUrl,
+  };
 }
 
 function normalizeSiteMode(value) {
