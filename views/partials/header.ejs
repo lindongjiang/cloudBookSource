@@ -5,26 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title><%= pageTitle %></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.9.22/dist/css/layui.css" />
-    <link rel="stylesheet" href="/static/css/common.css?v=1" />
+    <link rel="stylesheet" href="/static/css/common.css?v=2" />
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/layui@2.9.22/dist/layui.min.js"></script>
   </head>
-  <body>
+  <body class="mode-<%= siteMode %>">
     <div class="header">
       <div class="layui-container">
         <div class="logo">
-          <a href="/yuedu/index/index.html" title="<%= siteMeta.siteName %>">
-            <img src="/static/images/xiangse-logo.png" alt="<%= siteMeta.siteName %> 图标" />
+          <a href="/yuedu/index/index.html" title="<%= siteMeta.siteName %>" class="logo-main">
+            <img src="<%= siteMeta.logoUrl %>" alt="<%= siteMeta.siteName %> 图标" />
             <span><%= siteMeta.siteName %></span>
+          </a>
+          <a class="mode-switch-pill" href="<%= siteMeta.modeSwitch.href %>" title="切换到 <%= siteMeta.modeSwitch.label %>">
+            <img src="<%= siteMeta.modeSwitch.logoUrl %>" alt="<%= siteMeta.modeSwitch.label %> 图标" />
+            <span><%= siteMeta.modeSwitch.label %></span>
           </a>
         </div>
         <i class="layui-icon layui-icon-template-1 mobile-icon"></i>
         <div class="nav">
           <ul class="layui-nav menunav">
             <li class="layui-nav-item <%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
-            <li class="layui-nav-item <%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html">安装教程</a></li>
-            <li class="layui-nav-item <%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html">激活码购买</a></li>
-            <li class="layui-nav-item"><a target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a></li>
+            <li class="layui-nav-item <%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html"><%= siteMeta.installNavLabel %></a></li>
+            <li class="layui-nav-item <%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html"><%= siteMeta.activationNavLabel %></a></li>
+            <li class="layui-nav-item"><a target="_blank" href="<%= siteMeta.topExternalUrl %>"><%= siteMeta.topExternalLabel %></a></li>
           </ul>
         </div>
       </div>
@@ -62,9 +66,9 @@
               <li class="<%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
               <li class="<%= currentType === 'shuyuan' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuan/index.html">书源</a></li>
               <li class="<%= currentType === 'shuyuans' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuans/index.html">书源合集</a></li>
-              <li class="<%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html">安装教程</a></li>
-              <li class="<%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html">激活码购买</a></li>
-              <li><a target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a></li>
+              <li class="<%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html"><%= siteMeta.installNavLabel %></a></li>
+              <li class="<%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html"><%= siteMeta.activationNavLabel %></a></li>
+              <li><a target="_blank" href="<%= siteMeta.topExternalUrl %>"><%= siteMeta.topExternalLabel %></a></li>
             </ul>
           </div>
         </div>

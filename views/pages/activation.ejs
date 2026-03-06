@@ -2,33 +2,55 @@
 
 <div class="layui-container m-top">
   <div class="layui-panel xi-card">
-    <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
-      <h3>激活码购买与使用</h3>
-    </blockquote>
+    <% if (siteMode === 'android') { %>
+      <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
+        <h3>开源地址与项目入口</h3>
+      </blockquote>
 
-    <div class="layui-text">
-      <p>1、请仅通过官方可信渠道购买激活码，避免第三方倒卖风险。</p>
-      <p>2、购买后请在 MT 助手内输入卡密，解锁后即可下载香色闺阁。</p>
-      <p>3、若激活失败，请核对网络环境、卡密状态和设备授权是否正常。</p>
-      <p>4、支持覆盖安装：旧版本无需先卸载，直接在电脑端执行覆盖安装即可。</p>
-    </div>
+      <div class="layui-text">
+        <p>1、安卓模式下默认对接开源阅读生态，不涉及 iOS 卡密体系。</p>
+        <p>2、你可以直接从开源仓库或社区聚合页获取最新版安装包与更新信息。</p>
+        <p>3、书源导入与分享逻辑保持一致，继续支持 JSON/XBS 自动转换与发布。</p>
+      </div>
 
-    <hr />
+      <hr />
 
-    <div class="layui-row layui-col-space10">
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.cardBuyUrl %>">打开卡密购买地址</a>
+      <div class="layui-row layui-col-space10">
+        <% siteMeta.androidRelatedLinks.forEach(function(link){ %>
+          <div class="layui-col-xs12 layui-col-sm6">
+            <a class="layui-btn layui-btn-fluid <%= link.url === siteMeta.topExternalUrl ? 'xi-red-btn' : 'layui-btn-primary' %>" target="_blank" href="<%= link.url %>"><%= link.label %></a>
+          </div>
+        <% }) %>
       </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">查看安装教程</a>
+    <% } else { %>
+      <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
+        <h3>激活码购买与使用</h3>
+      </blockquote>
+
+      <div class="layui-text">
+        <p>1、请仅通过官方可信渠道购买激活码，避免第三方倒卖风险。</p>
+        <p>2、购买后请在 MT 助手内输入卡密，解锁后即可下载香色闺阁。</p>
+        <p>3、若激活失败，请核对网络环境、卡密状态和设备授权是否正常。</p>
+        <p>4、支持覆盖安装：旧版本无需先卸载，直接在电脑端执行覆盖安装即可。</p>
       </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a>
+
+      <hr />
+
+      <div class="layui-row layui-col-space10">
+        <div class="layui-col-xs12 layui-col-sm6">
+          <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.cardBuyUrl %>">打开卡密购买地址</a>
+        </div>
+        <div class="layui-col-xs12 layui-col-sm6">
+          <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">查看安装教程</a>
+        </div>
+        <div class="layui-col-xs12 layui-col-sm6">
+          <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源</a>
+        </div>
+        <div class="layui-col-xs12 layui-col-sm6">
+          <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">返回书源列表</a>
+        </div>
       </div>
-      <div class="layui-col-xs12 layui-col-sm6">
-        <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">返回书源列表</a>
-      </div>
-    </div>
+    <% } %>
   </div>
 </div>
 

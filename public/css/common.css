@@ -2,10 +2,13 @@
     --brand-red: #ef2d24;
     --brand-red-dark: #cf1f17;
     --brand-red-soft: #fff1ef;
+    --brand-shadow: rgba(207, 31, 23, 0.22);
+    --theme-bg-start: #ffeceb;
+    --theme-bg-mid: #fff7f6;
 }
 
 html {
-    background: linear-gradient(180deg, #ffeceb 0, #fff7f6 180px, #f5f5f5 100%);
+    background: #f5f5f5;
 }
 
 html,
@@ -17,6 +20,17 @@ body {
 body {
     padding-top: 0px !important;
     padding-bottom: 0px !important;
+    background: linear-gradient(180deg, var(--theme-bg-start) 0, var(--theme-bg-mid) 180px, #f5f5f5 100%);
+
+}
+
+body.mode-android {
+    --brand-red: #2b6db8;
+    --brand-red-dark: #1f548f;
+    --brand-red-soft: #edf4ff;
+    --brand-shadow: rgba(28, 74, 128, 0.28);
+    --theme-bg-start: #e7f2ff;
+    --theme-bg-mid: #f4f9ff;
 
 }
 
@@ -24,7 +38,7 @@ body {
     background-color: var(--brand-red);
     width: 100%;
     height: 60px;
-    box-shadow: 0 8px 24px rgba(207, 31, 23, 0.22);
+    box-shadow: 0 8px 24px var(--brand-shadow);
 }
 
 .header .logo {
@@ -33,9 +47,10 @@ body {
     float: left;
     display: flex;
     align-items: center;
+    gap: 10px;
 }
 
-.header .logo a {
+.header .logo .logo-main {
     display: inline-flex;
     align-items: center;
     gap: 10px;
@@ -45,11 +60,38 @@ body {
     line-height: 60px;
 }
 
-.header .logo a img {
+.header .logo .logo-main img {
     width: 38px;
     height: 38px;
     border-radius: 9px;
     border: 2px solid rgba(255, 255, 255, 0.7);
+}
+
+.mode-switch-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 10px 0 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 34px;
+    transition: all .2s ease;
+}
+
+.mode-switch-pill:hover {
+    background: rgba(255, 255, 255, 0.26);
+    color: #ffffff;
+}
+
+.mode-switch-pill img {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
 }
 
 .header .nav {
@@ -63,6 +105,10 @@ body {
 .header .layui-nav .layui-nav-item a {
     color: #ffe8e5;
     font-weight: 600;
+}
+
+body.mode-android .header .layui-nav .layui-nav-item a {
+    color: #e4efff;
 }
 
 .header .layui-nav .layui-nav-item a:hover,
@@ -280,6 +326,18 @@ body {
 @media screen and (max-width: 1024px) {
     .header .logo {
         text-align: left;
+        gap: 6px;
+    }
+
+    .header .logo .logo-main {
+        font-size: 24px;
+    }
+
+    .mode-switch-pill {
+        height: 30px;
+        line-height: 30px;
+        font-size: 12px;
+        padding: 0 8px 0 5px;
     }
 
     .header .nav {
@@ -505,7 +563,11 @@ pre#jsonpre {
 .xi-card {
   border-radius: 14px;
   border: 1px solid #ffd1cd;
-  background: linear-gradient(180deg, #fff7f6 0, #ffffff 100%);
+  background: linear-gradient(180deg, var(--brand-red-soft) 0, #ffffff 100%);
+}
+
+body.mode-android .xi-card {
+  border-color: #cfe0fb;
 }
 
 .xi-red-btn {

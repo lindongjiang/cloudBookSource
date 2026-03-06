@@ -4,7 +4,7 @@
 
 - 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：用户注册登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口
+- 功能：用户注册登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口、`iOS/安卓` 一键模式切换
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
@@ -24,9 +24,18 @@ cp .env.example .env
 
 ```env
 SITE_NAME=香色源
+SITE_MODE_DEFAULT=ios
 AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
 APP_INSTALL_URL=/yuedu/install/index.html
 ACTIVATION_BUY_URL=https://cloudmantoua.top/81/
+ANDROID_SITE_NAME=开源阅读
+ANDROID_APK_URL_PRIMARY=https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.23.110211.apk
+ANDROID_APK_URL_SECONDARY=https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.25.apk
+ANDROID_APK_URL_BETA=https://miaogongzi.lanzout.com/b01rgkhhe
+ANDROID_OPEN_SOURCE_URL=https://github.com/gedoor/legado
+ANDROID_BILIBILI_URL=https://space.bilibili.com/188144093
+ANDROID_XIU2_URL=https://yuedu.xiu2.xyz
+ANDROID_SOURCE_HUB_URL=https://legado.aoaostar.com/
 MT_WINDOWS_URL=https://wwbhc.lanzn.com/iwFoH3g1r9da
 MT_MACOS_URL=https://wwbhc.lanzn.com/ivLSo3g1tjkj
 CARD_BUY_URL=https://cloudmantoua.top/81/
@@ -88,6 +97,7 @@ npm run seed
 - `GET /yuedu/:type/jsons?id=1-2-3`
 - `GET /yuedu/install/index.html`
 - `GET /yuedu/activation/index.html`
+- `GET /index/site-mode/switch?mode=ios|android&redirect=...`
 - `GET /index/register/register.html`
 - `POST /index/register/register.html`
 - `GET /index/durl/add.html?data=base64(url)`

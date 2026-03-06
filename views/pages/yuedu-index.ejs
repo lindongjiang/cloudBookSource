@@ -5,20 +5,27 @@
     <div class="layui-col-xs12 layui-col-sm4">
       <div class="layui-panel xi-card">
         <div style="text-align: center;">
-          <img src="/static/images/xiangse-logo.png" style="width: 10rem; height: 10rem; border-radius: 20px;" alt="香色源图标" />
-          <p class="appname" style="margin-top: 10px; font-size: 22px; font-weight: 700;">香色源</p>
-          <p style="color: #666;">香色闺阁 iOS 书源仓库</p>
+          <img src="<%= siteMeta.logoUrl %>" style="width: 10rem; height: 10rem; border-radius: 20px;" alt="<%= siteMeta.appName %>图标" />
+          <p class="appname" style="margin-top: 10px; font-size: 22px; font-weight: 700;"><%= siteMeta.appName %></p>
+          <p style="color: #666;"><%= siteMeta.appSubTitle %></p>
         </div>
         <hr />
         <p class="info" style="text-align: center; margin-bottom: 10px;">
-          <span class="layui-badge-rim">平台：iOS</span>
-          <span class="layui-badge-rim">类型：书源</span>
+          <span class="layui-badge-rim">平台：<%= siteMeta.platformLabel %></span>
+          <span class="layui-badge-rim">类型：<%= siteMeta.sourceTypeLabel %></span>
         </p>
         <div class="layui-btn-container">
-          <a class="layui-btn layui-btn-fluid xi-red-btn" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
-          <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
-          <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">App 安装教程</a>
-          <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/activation/index.html">激活码购买地址</a>
+          <% if (siteMode === 'android') { %>
+            <% siteMeta.androidDownloads.forEach(function(item){ %>
+              <a class="layui-btn layui-btn-fluid xi-red-btn" href="<%= item.url %>" target="_blank"><%= item.label %></a>
+            <% }) %>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
+          <% } else { %>
+            <a class="layui-btn layui-btn-fluid xi-red-btn" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">App 安装教程</a>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/activation/index.html">激活码购买地址</a>
+          <% } %>
         </div>
       </div>
     </div>
@@ -26,30 +33,28 @@
     <div class="layui-col-xs12 layui-col-sm8">
       <div class="layui-panel xi-card">
         <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
-          <h3>站点说明</h3>
+          <h3><%= siteMode === 'android' ? '阅读' : '站点说明' %></h3>
         </blockquote>
         <div class="layui-text">
-          <p>1、本站专注香色闺阁 iOS 书源，不提供订阅源模块。</p>
-          <p>2、提交书源时会自动进行香色规则兼容优化（sourceType / weight / lastModifyTime / XPath）。</p>
-          <p>3、推荐优先使用“书源合集”进行批量分发，便于版本管理和回滚。</p>
+          <% siteMeta.homeNoticeLines.forEach(function(line){ %>
+            <p><%= line %></p>
+          <% }) %>
         </div>
 
         <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px; margin-top: 16px;">
-          <h3>快捷入口</h3>
+          <h3>相关链接</h3>
         </blockquote>
         <div class="layui-row layui-col-space10">
-          <div class="layui-col-xs12 layui-col-sm6">
-            <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= siteMeta.aiBookSourceUrl %>">AI 自动写书源（GitHub）</a>
-          </div>
-          <div class="layui-col-xs12 layui-col-sm6">
-            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">MT助手安装教程</a>
-          </div>
-          <div class="layui-col-xs12 layui-col-sm6">
-            <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.cardBuyUrl %>">卡密购买地址</a>
-          </div>
-          <div class="layui-col-xs12 layui-col-sm6">
-            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">查看完整安装教程</a>
-          </div>
+          <% siteMeta.homeRelatedLinks.forEach(function(link){ %>
+            <div class="layui-col-xs12 layui-col-sm6">
+              <a
+                class="layui-btn layui-btn-fluid <%= link.danger ? 'xi-red-btn' : 'layui-btn-primary' %>"
+                href="<%= link.url %>"
+                <%= link.external ? 'target="_blank"' : '' %>>
+                <%= link.label %>
+              </a>
+            </div>
+          <% }) %>
         </div>
       </div>
     </div>

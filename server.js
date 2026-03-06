@@ -31,6 +31,24 @@ const MT_MACOS_URL =
   process.env.MT_MACOS_URL || 'https://wwbhc.lanzn.com/ivLSo3g1tjkj';
 const CARD_BUY_URL =
   process.env.CARD_BUY_URL || 'https://cloudmantoua.top/81/';
+const ANDROID_SITE_NAME = process.env.ANDROID_SITE_NAME || '开源阅读';
+const ANDROID_APK_URL_PRIMARY =
+  process.env.ANDROID_APK_URL_PRIMARY ||
+  'https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.23.110211.apk';
+const ANDROID_APK_URL_SECONDARY =
+  process.env.ANDROID_APK_URL_SECONDARY ||
+  'https://gcore.jsdelivr.net/gh/mumuceo/file01/applist/yuedu/legado_app_3.25.apk';
+const ANDROID_APK_URL_BETA =
+  process.env.ANDROID_APK_URL_BETA || 'https://miaogongzi.lanzout.com/b01rgkhhe';
+const ANDROID_OPEN_SOURCE_URL =
+  process.env.ANDROID_OPEN_SOURCE_URL || 'https://github.com/gedoor/legado';
+const ANDROID_BILIBILI_URL =
+  process.env.ANDROID_BILIBILI_URL || 'https://space.bilibili.com/188144093';
+const ANDROID_XIU2_URL =
+  process.env.ANDROID_XIU2_URL || 'https://yuedu.xiu2.xyz';
+const ANDROID_SOURCE_HUB_URL =
+  process.env.ANDROID_SOURCE_HUB_URL || 'https://legado.aoaostar.com/';
+const SITE_MODE_DEFAULT = process.env.SITE_MODE_DEFAULT || 'ios';
 const MT_WINDOWS_QR_URL =
   process.env.MT_WINDOWS_QR_URL || '/static/images/install/qr-win.png';
 const MT_MACOS_QR_URL =
@@ -92,6 +110,72 @@ const TYPE_CONFIG = {
   },
 };
 
+const SITE_MODE_CONFIG = {
+  ios: {
+    key: 'ios',
+    siteName: SITE_NAME,
+    logoUrl: '/static/images/xiangse-logo.png',
+    appName: SITE_NAME,
+    appSubTitle: '香色闺阁 iOS 书源仓库',
+    platformLabel: 'iOS',
+    sourceTypeLabel: '书源',
+    installNavLabel: '安装教程',
+    activationNavLabel: '激活码购买',
+    topExternalLabel: 'AI 自动写书源',
+    topExternalUrl: AI_BOOKSOURCE_URL,
+    footerSubtitle: '香色闺阁 iOS 书源站 · Express + MySQL 5.7+',
+    homeNoticeLines: [
+      '本站专注香色闺阁 iOS 书源，不提供订阅源模块。',
+      '提交书源时会自动进行香色规则兼容优化（sourceType / weight / lastModifyTime / XPath）。',
+      '推荐优先使用“书源合集”进行批量分发，便于版本管理和回滚。',
+    ],
+    homeRelatedLinks: [
+      { label: 'AI 自动写书源（GitHub）', url: AI_BOOKSOURCE_URL, external: true, danger: true },
+      { label: 'MT助手安装教程', url: '/yuedu/install/index.html' },
+      { label: '卡密购买地址', url: CARD_BUY_URL, external: true },
+      { label: '查看完整安装教程', url: '/yuedu/install/index.html' },
+    ],
+    downloadButtons: [],
+    relatedLinks: [],
+  },
+  android: {
+    key: 'android',
+    siteName: ANDROID_SITE_NAME,
+    logoUrl: '/static/images/yuedu-logo.png',
+    appName: '阅读',
+    appSubTitle: '开源阅读 Android 书源仓库',
+    platformLabel: '安卓',
+    sourceTypeLabel: '小说',
+    installNavLabel: '安卓下载',
+    activationNavLabel: '开源地址',
+    topExternalLabel: '阅读 APP 开源地址',
+    topExternalUrl: ANDROID_OPEN_SOURCE_URL,
+    footerSubtitle: '开源阅读 Android 书源站 · Express + MySQL 5.7+',
+    homeNoticeLines: [
+      '自定义书源规则，抓取网页数据，规则清晰并可持续维护。',
+      '书源支持搜索与发现，找书与看书路径可自定义扩展。',
+      '支持本地 TXT / EPUB 阅读、净化替换、多翻页模式等能力。',
+    ],
+    homeRelatedLinks: [
+      { label: '阅读APP开源地址', url: ANDROID_OPEN_SOURCE_URL, external: true, danger: true },
+      { label: '安卓下载地址', url: '/yuedu/install/index.html' },
+      { label: '喵公子 B 站', url: ANDROID_BILIBILI_URL, external: true },
+      { label: 'XIU2 书源与订阅源', url: ANDROID_XIU2_URL, external: true },
+    ],
+    downloadButtons: [
+      { label: '正式版 3.23.110211.apk', url: ANDROID_APK_URL_PRIMARY, external: true },
+      { label: '正式版 3.25.apk', url: ANDROID_APK_URL_SECONDARY, external: true },
+      { label: 'Beta 版（喵公子提供）', url: ANDROID_APK_URL_BETA, external: true },
+    ],
+    relatedLinks: [
+      { label: '阅读APP开源地址', url: ANDROID_OPEN_SOURCE_URL },
+      { label: '喵公子的 B 站地址', url: ANDROID_BILIBILI_URL },
+      { label: 'XIU2 的书源和订阅源', url: ANDROID_XIU2_URL },
+      { label: '「阅读」APP 源', url: ANDROID_SOURCE_HUB_URL },
+    ],
+  },
+};
+
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -112,18 +196,36 @@ app.use('/static', express.static(path.join(ROOT, 'public')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 app.use((req, res, next) => {
+  const queryMode = normalizeSiteMode(req.query.mode);
+  if (queryMode) {
+    req.session.siteMode = queryMode;
+  }
+
+  const siteMode = resolveSiteMode(req.session.siteMode);
+  const baseMeta = SITE_MODE_CONFIG[siteMode];
+  const switchMeta = SITE_MODE_CONFIG[siteMode === 'android' ? 'ios' : 'android'];
+
   res.locals.currentUser = req.session.user || null;
   res.locals.requestUrl = req.originalUrl;
+  res.locals.siteMode = siteMode;
   res.locals.typeConfigMap = TYPE_CONFIG;
   res.locals.pageLabelMap = {
     index: '首页',
-    install: '安装教程',
-    activation: '激活码购买',
+    install: baseMeta.installNavLabel,
+    activation: baseMeta.activationNavLabel,
     shuyuan: TYPE_CONFIG.shuyuan.label,
     shuyuans: TYPE_CONFIG.shuyuans.label,
   };
   res.locals.siteMeta = {
-    siteName: SITE_NAME,
+    ...baseMeta,
+    siteName: baseMeta.siteName,
+    logoUrl: baseMeta.logoUrl,
+    modeSwitch: {
+      targetMode: switchMeta.key,
+      label: switchMeta.siteName,
+      logoUrl: switchMeta.logoUrl,
+      href: `/index/site-mode/switch?mode=${switchMeta.key}&redirect=${encodeURIComponent(req.originalUrl)}`,
+    },
     aiBookSourceUrl: AI_BOOKSOURCE_URL,
     appInstallUrl: APP_INSTALL_URL,
     activationBuyUrl: ACTIVATION_BUY_URL,
@@ -133,6 +235,8 @@ app.use((req, res, next) => {
     mtWindowsQrUrl: MT_WINDOWS_QR_URL,
     mtMacQrUrl: MT_MACOS_QR_URL,
     installShots: [INSTALL_SHOT_1, INSTALL_SHOT_2, INSTALL_SHOT_3],
+    androidDownloads: baseMeta.downloadButtons || [],
+    androidRelatedLinks: baseMeta.relatedLinks || [],
   };
   next();
 });
@@ -163,23 +267,32 @@ app.get('/', (_, res) => {
   res.redirect('/yuedu/index/index.html');
 });
 
+app.get('/index/site-mode/switch', (req, res) => {
+  const mode = normalizeSiteMode(req.query.mode);
+  if (mode) {
+    req.session.siteMode = mode;
+  }
+
+  res.redirect(normalizeRedirectPath(req.query.redirect));
+});
+
 app.get('/yuedu/index/index.html', (req, res) => {
   res.render('pages/yuedu-index', {
-    pageTitle: `${SITE_NAME} - 首页`,
+    pageTitle: `${res.locals.siteMeta.siteName} - 首页`,
     currentType: 'index',
   });
 });
 
 app.get('/yuedu/install/index.html', (req, res) => {
   res.render('pages/install', {
-    pageTitle: `${SITE_NAME} - App 安装教程`,
+    pageTitle: `${res.locals.siteMeta.siteName} - ${res.locals.siteMeta.installNavLabel}`,
     currentType: 'install',
   });
 });
 
 app.get('/yuedu/activation/index.html', (req, res) => {
   res.render('pages/activation', {
-    pageTitle: `${SITE_NAME} - 激活码购买`,
+    pageTitle: `${res.locals.siteMeta.siteName} - ${res.locals.siteMeta.activationNavLabel}`,
     currentType: 'activation',
   });
 });
@@ -190,7 +303,7 @@ app.get('/index/login/login.html', (req, res) => {
     return;
   }
   res.render('pages/login', {
-    pageTitle: `登录 - ${SITE_NAME}`,
+    pageTitle: `登录 - ${res.locals.siteMeta.siteName}`,
     currentType: 'none',
     error: '',
     redirect: req.query.redirect || '/yuedu/shuyuan/index.html',
@@ -211,7 +324,7 @@ app.post('/index/login/login.html', async (req, res) => {
 
   if (!user) {
     res.status(401).render('pages/login', {
-      pageTitle: `登录 - ${SITE_NAME}`,
+      pageTitle: `登录 - ${res.locals.siteMeta.siteName}`,
       currentType: 'none',
       error: '用户名或密码错误',
       redirect: redirectTo,
@@ -235,7 +348,7 @@ app.get('/index/register/register.html', (req, res) => {
     return;
   }
   res.render('pages/register', {
-    pageTitle: `注册 - ${SITE_NAME}`,
+    pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
     currentType: 'none',
     error: '',
     form: { username: '', displayName: '' },
@@ -250,7 +363,7 @@ app.post('/index/register/register.html', async (req, res) => {
 
   if (!/^[a-zA-Z0-9_]{3,32}$/.test(username)) {
     res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${SITE_NAME}`,
+      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
       currentType: 'none',
       error: '用户名需为 3-32 位字母/数字/下划线',
       form: { username, displayName },
@@ -260,7 +373,7 @@ app.post('/index/register/register.html', async (req, res) => {
 
   if (password.length < 6) {
     res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${SITE_NAME}`,
+      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
       currentType: 'none',
       error: '密码至少 6 位',
       form: { username, displayName },
@@ -270,7 +383,7 @@ app.post('/index/register/register.html', async (req, res) => {
 
   if (password !== confirmPassword) {
     res.status(400).render('pages/register', {
-      pageTitle: `注册 - ${SITE_NAME}`,
+      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
       currentType: 'none',
       error: '两次密码输入不一致',
       form: { username, displayName },
@@ -281,7 +394,7 @@ app.post('/index/register/register.html', async (req, res) => {
   const exists = await query('select id from users where username = ? limit 1', [username]);
   if (exists.length > 0) {
     res.status(409).render('pages/register', {
-      pageTitle: `注册 - ${SITE_NAME}`,
+      pageTitle: `注册 - ${res.locals.siteMeta.siteName}`,
       currentType: 'none',
       error: '用户名已存在，请更换',
       form: { username, displayName },
@@ -345,7 +458,7 @@ app.get('/yuedu/:type/index.html', async (req, res, next) => {
   }));
 
   res.render('pages/list', {
-    pageTitle: `${SITE_NAME} - ${cfg.label}`,
+    pageTitle: `${res.locals.siteMeta.siteName} - ${cfg.label}`,
     currentType: cfg.key,
     cfg,
     entries,
@@ -392,7 +505,7 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
   const importUrl = `${cfg.importPrefix}${jsonUrl}`;
 
   res.render('pages/detail', {
-    pageTitle: `${entry.title} - ${SITE_NAME}`,
+    pageTitle: `${entry.title} - ${res.locals.siteMeta.siteName}`,
     currentType: cfg.key,
     cfg,
     entry,
@@ -413,7 +526,7 @@ app.get('/yuedu/:type/add.html', (req, res, next) => {
 
   const template = cfg.kind === 'single' ? 'pages/add-single' : 'pages/add-file';
   res.render(template, {
-    pageTitle: `${SITE_NAME} - 新建${cfg.label}`,
+    pageTitle: `${res.locals.siteMeta.siteName} - 新建${cfg.label}`,
     currentType: cfg.key,
     cfg,
   });
@@ -1433,6 +1546,36 @@ function firstNonEmptyString(...values) {
     if (text) return text;
   }
   return '';
+}
+
+function normalizeSiteMode(value) {
+  const mode = String(value || '')
+    .trim()
+    .toLowerCase();
+  if (mode === 'ios' || mode === 'android') {
+    return mode;
+  }
+  return '';
+}
+
+function resolveSiteMode(value) {
+  const mode = normalizeSiteMode(value);
+  if (mode) return mode;
+  const fallback = normalizeSiteMode(SITE_MODE_DEFAULT);
+  return fallback || 'ios';
+}
+
+function normalizeRedirectPath(value) {
+  const raw = String(value || '').trim();
+  if (!raw.startsWith('/')) {
+    return '/yuedu/index/index.html';
+  }
+
+  if (raw.startsWith('//') || raw.startsWith('/\\')) {
+    return '/yuedu/index/index.html';
+  }
+
+  return raw;
 }
 
 async function ensureMysql57Compatible(conn) {

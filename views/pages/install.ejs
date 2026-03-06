@@ -1,5 +1,124 @@
 <%- include('../partials/header', { pageTitle, currentType }) %>
 
+<% if (siteMode === 'android') { %>
+<style>
+  .install-wrap {
+    margin-top: 14px;
+  }
+  .android-hero {
+    background: linear-gradient(135deg, #122743 0%, #1f4f8f 55%, #2e6fb5 100%);
+    color: #fff;
+    border-radius: 22px;
+    padding: 26px 22px;
+    box-shadow: 0 18px 46px rgba(10, 30, 58, 0.3);
+  }
+  .android-hero h1 {
+    margin: 0 0 6px;
+    font-size: 28px;
+    font-weight: 700;
+  }
+  .android-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.86);
+  }
+  .section-title {
+    margin: 24px 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #162a4b;
+  }
+  .download-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .download-card {
+    background: #fff;
+    border: 1px solid #d9e6f8;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 26px rgba(16, 43, 79, 0.08);
+  }
+  .download-card h3 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    color: #10264a;
+  }
+  .download-card p {
+    margin: 0 0 12px;
+    color: #5f6f8d;
+    min-height: 46px;
+  }
+  .guide-card {
+    margin-top: 12px;
+    background: #fff;
+    border: 1px solid #d9e6f8;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 10px 26px rgba(16, 43, 79, 0.08);
+  }
+  .guide-list {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.9;
+  }
+  .install-cta {
+    margin-top: 14px;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .install-cta .layui-btn {
+    height: 44px;
+    line-height: 44px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+  @media (max-width: 992px) {
+    .download-grid,
+    .install-cta {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="layui-container install-wrap">
+  <div class="android-hero">
+    <h1>阅读 App（安卓）下载中心</h1>
+    <p>切换到安卓模式后，下载地址、开源地址、社区入口均已替换为开源阅读生态。</p>
+  </div>
+
+  <h2 class="section-title">安卓版下载</h2>
+  <div class="download-grid">
+    <% siteMeta.androidDownloads.forEach(function(item, index){ %>
+      <div class="download-card">
+        <h3><%= item.label %></h3>
+        <p>
+          <%= index === 0 ? '推荐主线稳定版，适合大多数用户。' : '' %>
+          <%= index === 1 ? '备用正式版，适合需要不同构建的设备。' : '' %>
+          <%= index === 2 ? '社区维护 Beta 版，更新节奏更快。' : '' %>
+        </p>
+        <a class="layui-btn layui-btn-fluid xi-red-btn" target="_blank" href="<%= item.url %>">立即下载</a>
+      </div>
+    <% }) %>
+  </div>
+
+  <h2 class="section-title">开源地址与社区</h2>
+  <div class="guide-card">
+    <ol class="guide-list">
+      <% siteMeta.androidRelatedLinks.forEach(function(link){ %>
+        <li><a target="_blank" href="<%= link.url %>"><%= link.label %></a></li>
+      <% }) %>
+    </ol>
+  </div>
+
+  <div class="install-cta">
+    <a class="layui-btn xi-red-btn" target="_blank" href="<%= siteMeta.topExternalUrl %>">开源仓库</a>
+    <a class="layui-btn layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
+    <a class="layui-btn layui-btn-primary" href="<%= siteMeta.modeSwitch.href %>">切回香色源 iOS</a>
+  </div>
+</div>
+<% } else { %>
 <style>
   .install-wrap {
     margin-top: 14px;
@@ -218,5 +337,6 @@
     提示：若安装时提示权限或设备未信任，请在手机上允许并重新连接一次；覆盖安装失败时，先重启 MT 助手再重试即可。
   </div>
 </div>
+<% } %>
 
 <%- include('../partials/footer') %>
