@@ -1,0 +1,66 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-panel" style="padding: 5px;">
+    <% if (!currentUser) { %>
+      <blockquote class="layui-elem-quote layui-font-red">当前未登录，提交会提示失败。请先登录后再发布。</blockquote>
+    <% } %>
+
+    <form class="layui-form layui-form-pane" id="fileAddForm" enctype="multipart/form-data">
+      <div class="layui-collapse" lay-accordion="true">
+        <div class="layui-colla-item">
+          <h2 class="layui-colla-title" style="color: red;">文件与标题</h2>
+          <div class="layui-colla-content layui-show" style="padding: 10px;">
+            <input type="file" id="file" name="file" accept=".json,application/json" class="layui-input" />
+            <hr />
+            <input id="titles" type="text" name="title" placeholder="请输入标题" autocomplete="off" class="layui-input" />
+          </div>
+        </div>
+
+        <div class="layui-colla-item">
+          <h2 class="layui-colla-title">介绍(选填)</h2>
+          <div class="layui-colla-content">
+            <textarea class="layui-textarea" id="content" name="content"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <hr />
+      <button class="layui-btn layui-btn-fluid layui-btn-danger" type="submit">提交</button>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+  document.getElementById('fileAddForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const fd = new FormData(form);
+
+    if (!fd.get('file') || !fd.get('file').name) {
+      layui.layer.msg('请先选择要分享的文件！');
+      return;
+    }
+
+    if (!(fd.get('title') || '').toString().trim()) {
+      layui.layer.msg('请输入标题');
+      return;
+    }
+
+    const res = await fetch('/yuedu/<%= cfg.key %>/add.html', {
+      method: 'POST',
+      body: fd,
+    });
+
+    const data = await res.json();
+    layui.layer.msg(data.msg || '提交完成');
+    if (data.code === 1 && data.url) {
+      setTimeout(function () {
+        window.location.href = data.url;
+      }, 500);
+    }
+  });
+</script>

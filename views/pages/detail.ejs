@@ -1,0 +1,115 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-row layui-col-space10">
+    <div class="layui-col-xs12">
+      <div class="layui-card">
+        <div class="layui-card-header content">
+          <h1>
+            <%= entry.title %>
+            <% if (entry.source_url) { %>
+              <p><%= entry.source_url %></p>
+            <% } %>
+          </h1>
+        </div>
+        <div class="layui-card-body">
+          <blockquote class="layui-elem-quote" style="text-align: center;">
+            <p>
+              <i class="layui-icon layui-icon-username"></i><%= entry.author_name %> (<%= entry.author_uid %>)<i class="m-mid"></i><%= relativeTime %>
+            </p>
+          </blockquote>
+
+          <div class="contents layui-text">
+            <% if (entry.content_html) { %>
+              <%- entry.content_html %>
+            <% } else { %>
+              <p>暂无介绍说明</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-xs12 layui-col-md4">
+      <div class="layui-card">
+        <div class="layui-card-header" style="text-align: center;">网络导入</div>
+        <div class="layui-card-body">
+          <div class="layui-row layui-col-space10">
+            <div class="layui-col-xs12">
+              <input type="text" id="jsonurl" class="layui-input" value="<%= jsonUrl %>" />
+            </div>
+            <div class="layui-col-xs6">
+              <a href="<%= jsonUrl %>" target="_blank" class="layui-btn layui-btn-fluid">下载JSON文件</a>
+            </div>
+            <div class="layui-col-xs6">
+              <a href="<%= importUrl %>" class="layui-btn layui-btn-fluid">3.x一键导入</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="layui-card" style="text-align: center;">
+        <div class="layui-card-header">二维码导入</div>
+        <div class="layui-card-body">
+          <div id="qrcode"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-xs12 layui-col-md8">
+      <div class="layui-card">
+        <div class="layui-card-header">
+          <button class="layui-btn layui-btn-primary layui-border-blue layui-btn-fluid" id="copyCode">复制代码</button>
+        </div>
+        <div class="layui-card-body">
+          <pre class="layui-code" id="jsonpre"><%= codeDisplay %></pre>
+        </div>
+      </div>
+
+      <% if (currentUser) { %>
+        <div class="layui-card m-top">
+          <div class="layui-card-body">
+            <button id="del" class="layui-btn layui-btn-danger layui-btn-fluid">删除该条目</button>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+  const qrEl = document.getElementById('qrcode');
+  new QRCode(qrEl, {
+    text: document.getElementById('jsonurl').value,
+    width: 280,
+    height: 280,
+  });
+
+  document.getElementById('copyCode').addEventListener('click', async function () {
+    try {
+      await navigator.clipboard.writeText(document.getElementById('jsonpre').innerText);
+      layui.layer.msg('复制成功');
+    } catch (_err) {
+      layui.layer.msg('复制失败，请手动复制');
+    }
+  });
+
+  const delBtn = document.getElementById('del');
+  if (delBtn) {
+    delBtn.addEventListener('click', function () {
+      layui.layer.confirm('你确定要删除吗?', { icon: 3, title: '提示' }, async function (index) {
+        layui.layer.close(index);
+        const res = await fetch('/yuedu/<%= cfg.key %>/del/id/<%= entry.id %>.html');
+        const data = await res.json();
+        layui.layer.msg(data.msg || '操作完成');
+        if (data.code === 1 && data.url) {
+          setTimeout(function () {
+            window.location.href = data.url;
+          }, 500);
+        }
+      });
+    });
+  }
+</script>

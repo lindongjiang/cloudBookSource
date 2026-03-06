@@ -1,0 +1,479 @@
+html {
+    background-color: #F2F2F2;
+}
+
+html,
+body {
+    overflow-x: hidden;
+
+}
+
+body {
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+
+}
+
+.header {
+    background-color: #2f363c;
+    width: 100%;
+    height: 60px;
+}
+
+.header .logo {
+    width: 200px;
+    height: 60px;
+    float: left;
+    text-align: center;
+}
+
+.header .logo a {
+    font-size: 50px;
+    color: #FFF;
+    line-height: 60px;
+}
+
+.header .nav {
+    float: right;
+    /* 默认居左，可调整为居右模式 */
+    /* float: right;  */
+}
+
+.mobile-icon {
+    display: none;
+}
+
+
+.usernav {
+    background-color: #ffffff;
+    height: 40px;
+
+    margin-bottom: 10px;
+}
+
+.usernav .user {
+    float: right;
+    padding-top: 10px;
+    padding-right: 10px;
+}
+
+.usernav .homepath {
+    float: left;
+    padding-top: 10px;
+    padding-right: 10px;
+}
+
+.footer {
+    text-align: center;
+    color: #666;
+    font-weight: 300;
+    position: static;
+
+
+    background-color: #ffffff;
+    height: 50px;
+    line-height: 50px;
+    padding: 5px 0;
+    margin-top: 20px;
+
+}
+
+.footer a {
+    padding: 0 5px;
+}
+
+.footer p {
+    display: inline-block;
+    vertical-align: middle;
+    padding-right: 10px;
+}
+
+
+
+.m-mid {
+    display: inline-block;
+    height: 10px;
+    width: 1px;
+    margin: 0 10px;
+    vertical-align: middle;
+    background-color: #e2e2e2;
+}
+
+.m-right {
+    position: absolute;
+    right: 10px;
+    top: 0;
+}
+
+.m-mb {
+    margin-bottom: 10px;
+}
+
+.m-top {
+    margin-top: 10px;
+}
+
+
+.layui-card,
+.layui-panel {
+    border-radius: 10px;
+}
+
+.layui-panel {
+    padding: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.main .layui-container {
+    padding: 0 2px;
+}
+
+/* 演示元素 */
+
+.addjson-class .layui-layer-content {
+    background-color: #e1e1e1;
+    text-align: center;
+}
+
+.addjson-class .layui-layer-content p {
+    margin-bottom: 10px;
+}
+
+.layui-card-body {
+    overflow: hidden;
+}
+
+/* 列表 */
+.ylist {
+    position: relative;
+    height: 48px;
+    line-height: 22px;
+    padding: 5px 5px 5px 32px;
+    border-bottom: 1px dotted #e2e2e2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ylist .checkboxclass {
+    position: absolute;
+    left: 0px;
+    top: 15px;
+}
+
+.ylist h2 {
+    padding-right: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+}
+
+
+
+.ylist h2 a {
+
+    color: #01aaed;
+
+}
+
+.biaoqian {
+    margin-left: 0px !important;
+}
+
+.biaoqian .layui-btn-xs {
+    height: 18px;
+    line-height: 18px;
+}
+
+.biaoqian .bg1 {
+    background-color: #393D49;
+    color: #ffffff;
+}
+
+.biaoqian .bg2 {
+    background-color: #FF5722;
+    color: #ffffff;
+}
+
+.biaoqian .bg3 {
+    background-color: #FFB800;
+    color: #ffffff;
+}
+
+.biaoqian .bg4 {
+    background-color: #009688;
+    color: #ffffff;
+}
+
+.biaoqian .bg5 {
+    background-color: #2F4056;
+    color: #ffffff;
+}
+
+.biaoqian .bg6 {
+    background-color: #1E9FFF;
+    color: #ffffff;
+}
+
+.biaoqian .bg7 {
+    background-color: #FAFAFA;
+    color: #5f5f5f !important;
+}
+
+/* 搜索 */
+.fly-layer-search input {
+    height: 75px;
+    line-height: 75px;
+    width: 300px;
+    padding: 0 15px;
+    font-size: 20px;
+    border: none 0;
+    background: none;
+}
+
+.layui-code-title {
+    display: none;
+}
+
+#navsub .layui-tab-bar {
+    display: none;
+}
+
+@media screen and (max-width: 1024px) {
+    .header .logo {
+        text-align: left;
+    }
+
+    .header .nav {
+        display: none;
+        width: 100%;
+        position: absolute;
+        z-index: 999999;
+        top: 60px;
+        /* 如果需要缝隙，可将值调至61px */
+        margin-left: -15px;
+    }
+
+    .layui-nav {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        padding-bottom: 50px;
+    }
+
+    .header .nav li {
+        width: 100%;
+        text-align: center;
+    }
+
+    .mobile-icon {
+        display: block;
+        color: #FFF;
+        font-size: 30px;
+        float: right;
+        margin-top: 15px;
+    }
+
+    .layui-nav .layui-this:after,
+    .layui-nav-bar,
+    .layui-nav-tree .layui-nav-itemed:after {
+        height: 1px;
+        background-color: #5FB878;
+    }
+
+    .footer {
+        position: static;
+        height: auto;
+        padding: 15px 0;
+        line-height: 30px;
+    }
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.layui-layedit,
+.layui-layedit-tool {
+    border-color: #eee;
+}
+
+/** 富文本编辑器 **/
+.layui-layedit {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 2px;
+}
+
+.layui-layedit-tool {
+    padding: 3px 5px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    font-size: 0;
+}
+
+.layedit-tool-fixed {
+    position: fixed;
+    top: 0;
+    border-top: 1px solid #eee;
+}
+
+.layui-layedit-tool .layedit-tool-mid,
+.layui-layedit-tool .layui-icon {
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 14px;
+}
+
+.layui-layedit-tool .layui-icon {
+    position: relative;
+    width: 32px;
+    height: 30px;
+    line-height: 30px;
+    margin: 3px 5px;
+    border-radius: 2px;
+    color: #777;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.layui-layedit-tool .layui-icon:hover {
+    color: #393D49;
+}
+
+.layui-layedit-tool .layui-icon:active {
+    color: #000;
+}
+
+.layui-layedit-tool .layedit-tool-active {
+    background-color: #eee;
+    color: #000;
+}
+
+.layui-layedit-tool .layui-disabled,
+.layui-layedit-tool .layui-disabled:hover {
+    color: #d2d2d2;
+    cursor: not-allowed;
+}
+
+.layui-layedit-tool .layedit-tool-mid {
+    width: 1px;
+    height: 18px;
+    margin: 0 10px;
+    background-color: #d2d2d2;
+}
+
+.layedit-tool-html {
+    width: 50px !important;
+    font-size: 30px !important;
+}
+
+.layedit-tool-b,
+.layedit-tool-code,
+.layedit-tool-help {
+    font-size: 16px !important;
+}
+
+.layedit-tool-d,
+.layedit-tool-unlink,
+.layedit-tool-face,
+.layedit-tool-image {
+    font-size: 18px !important;
+}
+
+.layedit-tool-image input {
+    position: absolute;
+    font-size: 0;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.01;
+    filter: Alpha(opacity=1);
+    cursor: pointer;
+}
+
+.layui-layedit-iframe iframe {
+    display: block;
+    width: 100%;
+}
+
+#LAY_layedit_code {
+    overflow: hidden;
+}
+.card-content {
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.filter-panel {
+  display: none;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #efefef;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.ylist {
+  height: 66px;
+}
+
+.ylist .badges {
+  margin-top: 2px;
+}
+
+.ylist .badges .layui-badge-rim {
+  margin-right: 3px;
+}
+
+.contents {
+  word-break: break-word;
+}
+
+pre#jsonpre {
+  max-height: 540px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.login-card {
+  max-width: 420px;
+  margin: 20px auto;
+}
+
+.top-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media screen and (max-width: 768px) {
+  .ylist {
+    height: auto;
+    min-height: 74px;
+    white-space: normal;
+  }
+  .ylist h2 {
+    white-space: normal;
+    padding-right: 96px;
+  }
+}

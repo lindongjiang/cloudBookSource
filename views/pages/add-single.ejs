@@ -1,0 +1,93 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-panel" style="padding: 5px;">
+    <% if (!currentUser) { %>
+      <blockquote class="layui-elem-quote layui-font-red">当前未登录，提交会提示失败。请先登录后再发布。</blockquote>
+    <% } %>
+
+    <form class="layui-form layui-form-pane" id="singleAddForm">
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label layui-font-red">源代码(*)</label>
+        <div class="layui-input-block">
+          <textarea class="layui-textarea" id="code" name="code" placeholder="请输入源代码（JSON） 必填项" style="height: 320px;"></textarea>
+        </div>
+      </div>
+
+      <div class="layui-form-item">
+        <blockquote class="layui-elem-quote">注意: 请不要分享半成品，建议先本地测试可用后再提交。</blockquote>
+      </div>
+
+      <% if (cfg.key === 'shuyuan') { %>
+        <div class="layui-form-item layui-form-text">
+          <fieldset class="layui-elem-field">
+            <legend>分类扩展选项</legend>
+            <div class="layui-field-box">
+              <input type="checkbox" name="tu" title="漫画" lay-skin="primary" />
+              <input type="checkbox" name="shengyin" title="有声" lay-skin="primary" />
+            </div>
+          </fieldset>
+        </div>
+      <% } %>
+
+      <div class="layui-form-item layui-form-text">
+        <label class="layui-form-label">介绍与说明</label>
+        <div class="layui-input-block">
+          <textarea class="layui-textarea" id="content" name="content" placeholder="可选"></textarea>
+        </div>
+      </div>
+
+      <hr />
+      <button class="layui-btn layui-btn-fluid layui-btn-danger" type="submit">提交</button>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+  document.getElementById('singleAddForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+
+    const form = event.target;
+    const fd = new FormData(form);
+    const code = (fd.get('code') || '').toString().trim();
+
+    if (!code) {
+      layui.layer.msg('请输入源代码');
+      return;
+    }
+
+    try {
+      JSON.parse(code);
+    } catch (_err) {
+      layui.layer.msg('请输入正确的源代码!');
+      return;
+    }
+
+    const params = new URLSearchParams();
+    fd.forEach(function (value, key) {
+      if (key === 'tu' || key === 'shengyin') {
+        params.set(key, '1');
+        return;
+      }
+      params.set(key, value.toString());
+    });
+
+    const res = await fetch('/yuedu/<%= cfg.key %>/add.html', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      },
+      body: params.toString(),
+    });
+
+    const data = await res.json();
+    layui.layer.msg(data.msg || '提交完成');
+    if (data.code === 1 && data.url) {
+      setTimeout(function () {
+        window.location.href = data.url;
+      }, 500);
+    }
+  });
+</script>

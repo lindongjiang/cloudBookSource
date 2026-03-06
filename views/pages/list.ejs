@@ -1,0 +1,238 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-card layui-form" lay-filter="go">
+    <div class="layui-card-header">
+      <div class="top-tools">
+        <% if (cfg.kind === 'single') { %>
+          <input type="checkbox" id="class_all" title="全选" />
+          <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="addjson">生成</button>
+        <% } %>
+        <a href="/yuedu/<%= cfg.key %>/add.html" class="layui-btn layui-btn-sm layui-btn-normal">新建</a>
+        <button type="button" class="layui-btn layui-btn-sm layui-btn-primary m-right" id="sokeybtn" style="top: 5px;">
+          <i class="layui-icon layui-icon-search" style="font-size: 20px;"></i>
+        </button>
+      </div>
+
+      <div id="filterPanel" class="filter-panel">
+        <form class="layui-form" method="get" action="/yuedu/<%= cfg.key %>/index.html">
+          <div class="layui-row layui-col-space10">
+            <div class="layui-col-xs12">
+              <input type="text" name="keys" placeholder="请输入关键词" autocomplete="off" class="layui-input" value="<%= query.keys %>" />
+            </div>
+            <div class="layui-col-xs12">
+              <input type="text" name="uid" placeholder="请输入用户Uid" autocomplete="off" class="layui-input" value="<%= query.uid %>" />
+            </div>
+            <div class="layui-col-xs6">
+              <select name="order1">
+                <option value="time" <%= query.order1 === 'time' ? 'selected' : '' %>>更新时间</option>
+                <option value="down" <%= query.order1 === 'down' ? 'selected' : '' %>>下载量</option>
+              </select>
+            </div>
+            <div class="layui-col-xs6">
+              <select name="order2">
+                <option value="1" <%= query.order2 !== '2' ? 'selected' : '' %>>降序</option>
+                <option value="2" <%= query.order2 === '2' ? 'selected' : '' %>>升序</option>
+              </select>
+            </div>
+
+            <% if (cfg.kind === 'single') { %>
+              <div class="layui-col-xs12">
+                <label class="layui-form-label" style="width: auto;">版本：</label>
+                <input type="radio" name="ver" value="" title="全部" <%= query.ver === '' ? 'checked' : '' %> />
+                <input type="radio" name="ver" value="2" title="2.X" <%= query.ver === '2' ? 'checked' : '' %> />
+                <input type="radio" name="ver" value="3" title="3.X" <%= query.ver === '3' ? 'checked' : '' %> />
+              </div>
+
+              <div class="layui-col-xs12">
+                <label class="layui-form-label" style="width: auto;">发现：</label>
+                <input type="radio" name="faxian" value="" title="全部" <%= query.faxian === '' ? 'checked' : '' %> />
+                <input type="radio" name="faxian" value="1" title="有" <%= query.faxian === '1' ? 'checked' : '' %> />
+                <input type="radio" name="faxian" value="0" title="无" <%= query.faxian === '0' ? 'checked' : '' %> />
+              </div>
+
+              <div class="layui-col-xs12">
+                <label class="layui-form-label" style="width: auto;">搜索：</label>
+                <input type="radio" name="sousuo" value="" title="全部" <%= query.sousuo === '' ? 'checked' : '' %> />
+                <input type="radio" name="sousuo" value="1" title="有" <%= query.sousuo === '1' ? 'checked' : '' %> />
+                <input type="radio" name="sousuo" value="0" title="无" <%= query.sousuo === '0' ? 'checked' : '' %> />
+              </div>
+
+              <div class="layui-col-xs12">
+                <label class="layui-form-label" style="width: auto;">图源：</label>
+                <input type="radio" name="tu" value="" title="全部" <%= query.tu === '' ? 'checked' : '' %> />
+                <input type="radio" name="tu" value="1" title="有" <%= query.tu === '1' ? 'checked' : '' %> />
+                <input type="radio" name="tu" value="0" title="无" <%= query.tu === '0' ? 'checked' : '' %> />
+              </div>
+
+              <div class="layui-col-xs12">
+                <label class="layui-form-label" style="width: auto;">有声：</label>
+                <input type="radio" name="shengyin" value="" title="全部" <%= query.shengyin === '' ? 'checked' : '' %> />
+                <input type="radio" name="shengyin" value="1" title="有" <%= query.shengyin === '1' ? 'checked' : '' %> />
+                <input type="radio" name="shengyin" value="0" title="无" <%= query.shengyin === '0' ? 'checked' : '' %> />
+              </div>
+            <% } %>
+
+            <div class="layui-col-xs12">
+              <button class="layui-btn layui-btn-fluid">筛选</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="layui-card-body layui-row layui-col-space20">
+      <% if (entries.length === 0) { %>
+        <div class="layui-col-xs12">
+          <div class="layui-panel" style="text-align: center;">暂无数据</div>
+        </div>
+      <% } %>
+
+      <% entries.forEach(function(entry){ %>
+        <div class="layui-col-xs12 layui-col-sm6 layui-col-md4">
+          <div class="ylist" style="<%= cfg.kind === 'file' ? 'padding-left: 5px;' : '' %>">
+            <% if (cfg.kind === 'single') { %>
+              <p class="checkboxclass"><input type="checkbox" class="class_one" name="ids[]" value="<%= entry.id %>" /></p>
+            <% } %>
+
+            <h2>
+              <a href="/yuedu/<%= cfg.key %>/content/id/<%= entry.id %>.html"><%= entry.title %></a>
+              <p class="m-right" style="top: 3px;"><%= entry.relativeTime %></p>
+            </h2>
+
+            <div class="badges">
+              <% if (cfg.kind === 'single') { %>
+                <span class="layui-badge-rim layui-bg-gray layui-font-black"><%= entry.ver ? entry.ver : 3 %>.X</span>
+                <span class="layui-badge-rim layui-bg-gray layui-font-orange"><%= entry.has_faxian ? '发 ' : '' %><%= entry.has_sousuo ? '搜 ' : '' %><%= entry.has_tu ? '图 ' : '' %><%= entry.has_shengyin ? '声 ' : '' %></span>
+              <% } else { %>
+                <span class="layui-badge-rim layui-bg-gray layui-font-green">源数量:<%= entry.source_count || 0 %></span>
+              <% } %>
+              <span class="layui-badge-rim layui-bg-gray layui-font-red" title="UID:<%= entry.author_uid %>">用户: <%= entry.author_name %></span>
+              <span class="layui-badge-rim layui-bg-gray layui-font-purple">下载:<%= entry.download_count %></span>
+            </div>
+          </div>
+        </div>
+      <% }) %>
+
+      <div class="layui-col-xs12" style="text-align: center;">
+        共有 <%= total %> 条数据
+        <div class="layui-box layui-laypage layui-laypage-default" style="margin-top: 8px;">
+          <% if (page > 1) { %>
+            <a href="<%= buildPageUrl(page - 1) %>">上一页</a>
+          <% } else { %>
+            <a class="layui-laypage-prev">上一页</a>
+          <% } %>
+
+          <% pageItems.forEach(function(p){ %>
+            <% if (p === null) { %>
+              <a class="layui-laypage-prev">...</a>
+            <% } else if (p === page) { %>
+              <span class="layui-laypage-curr"><em class="layui-laypage-em"></em><em><%= p %></em></span>
+            <% } else { %>
+              <a href="<%= buildPageUrl(p) %>"><%= p %></a>
+            <% } %>
+          <% }) %>
+
+          <% if (page < totalPages) { %>
+            <a href="<%= buildPageUrl(page + 1) %>">下一页</a>
+          <% } else { %>
+            <a class="layui-laypage-next">下一页</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if (cfg.kind === 'single') { %>
+  <script type="text/html" id="open_1">
+    <div class="layui-card">
+      <div class="layui-card-header">网络导入</div>
+      <div class="layui-card-body">
+        <p><input type="text" class="layui-input" id="jsoninput"></p>
+        <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="jsondown" href="#">下载JSON文件</a></p>
+        <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="yueduurl" href="#">3.0一键导入</a></p>
+      </div>
+    </div>
+    <div class="layui-card">
+      <div class="layui-card-header">二维码导入</div>
+      <div class="layui-card-body">
+        <div id="qrcode"></div>
+      </div>
+    </div>
+  </script>
+<% } %>
+
+<%- include('../partials/footer') %>
+
+<% if (cfg.kind === 'single') { %>
+<script>
+  const classAll = document.getElementById('class_all');
+  if (classAll) {
+    classAll.addEventListener('change', function () {
+      document.querySelectorAll('.class_one').forEach(function (node) {
+        node.checked = classAll.checked;
+      });
+    });
+  }
+
+  document.querySelectorAll('.class_one').forEach(function (node) {
+    node.addEventListener('change', function () {
+      const all = Array.from(document.querySelectorAll('.class_one'));
+      classAll.checked = all.length > 0 && all.every(function (x) { return x.checked; });
+    });
+  });
+
+  function toBase64Unicode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  async function buildTempUrl(url) {
+    const res = await fetch('/index/durl/add.html?data=' + encodeURIComponent(toBase64Unicode(url)));
+    return (await res.text()).trim();
+  }
+
+  async function onGenerate() {
+    const ids = Array.from(document.querySelectorAll('.class_one:checked')).map(function (x) { return x.value; });
+    if (ids.length < 1) {
+      layui.layer.msg('请先选中要生成的数据!');
+      return;
+    }
+
+    const jsonsUrl = location.origin + '/yuedu/<%= cfg.key %>/jsons?id=' + ids.join('-');
+    const tempUrl = await buildTempUrl(jsonsUrl);
+    if (!tempUrl || tempUrl === '0') {
+      layui.layer.msg('生成失败，请重试');
+      return;
+    }
+
+    layui.layer.open({
+      type: 1,
+      area: ['370px', '500px'],
+      title: '生成的地址均为临时数据，不定时清理',
+      shade: 0.6,
+      skin: 'addjson-class',
+      content: document.getElementById('open_1').innerHTML,
+      success: function () {
+        document.getElementById('jsoninput').value = tempUrl;
+        document.getElementById('jsondown').href = tempUrl;
+        document.getElementById('yueduurl').href = '<%= cfg.importPrefix %>' + tempUrl;
+        const qrEl = document.getElementById('qrcode');
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+          text: tempUrl,
+          width: 280,
+          height: 280,
+        });
+      },
+    });
+  }
+
+  document.getElementById('addjson').addEventListener('click', function () {
+    onGenerate().catch(function (err) {
+      console.error(err);
+      layui.layer.msg('操作失败');
+    });
+  });
+</script>
+<% } %>

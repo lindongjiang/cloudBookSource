@@ -1,0 +1,42 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<div class="layui-container m-top">
+  <div class="layui-card login-card">
+    <div class="layui-card-header">登录</div>
+    <div class="layui-card-body">
+      <form class="layui-form" method="post" action="/index/login/login.html">
+        <input type="hidden" name="redirect" value="<%= redirect %>" />
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">账号</label>
+          <div class="layui-input-block">
+            <input type="text" name="username" required placeholder="请输入账号" autocomplete="off" class="layui-input" />
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">密码</label>
+          <div class="layui-input-block">
+            <input type="password" name="password" required placeholder="请输入密码" autocomplete="off" class="layui-input" />
+          </div>
+        </div>
+
+        <% if (error) { %>
+          <div class="layui-form-item">
+            <div class="layui-font-red"><%= error %></div>
+          </div>
+        <% } %>
+
+        <div class="layui-form-item">
+          <button class="layui-btn layui-btn-fluid" type="submit">登 录</button>
+        </div>
+      </form>
+
+      <blockquote class="layui-elem-quote" style="margin-top: 12px;">
+        演示账号：`admin` / `admin123`
+      </blockquote>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
