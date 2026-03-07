@@ -1335,12 +1335,12 @@ async function runXbsTool(action, inputPath, outputPath) {
     );
   }
 
-  const pythonCandidates = [PYTHON_BIN, 'python3', 'python']
-    .map((x) => String(x || '').trim())
-    .filter((x, i, arr) => x && arr.indexOf(x) === i);
+  const pythonCandidates = buildPythonCandidates();
 
   let lastError;
+  const triedBins = [];
   for (const bin of pythonCandidates) {
+    triedBins.push(bin);
     try {
       await runProcess(bin, [XBS_TOOL_PATH, action, '-i', inputPath, '-o', outputPath], {
         env: buildXbsToolEnv(),
@@ -1355,8 +1355,23 @@ async function runXbsTool(action, inputPath, outputPath) {
   }
 
   throw new Error(
-    `${lastError?.message || '转换命令执行失败'}（请确认 Python/Go 环境可用，XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
+    `${lastError?.message || '转换命令执行失败'}（已尝试Python: ${triedBins.join(', ')}；请确认 Python/Go 环境可用，XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
   );
+}
+
+function buildPythonCandidates() {
+  const fallbackAbsoluteBins = [
+    '/usr/bin/python3',
+    '/usr/local/bin/python3',
+    '/bin/python3',
+    '/usr/bin/python',
+    '/usr/local/bin/python',
+    '/bin/python',
+  ];
+
+  return [PYTHON_BIN, 'python3', 'python', ...fallbackAbsoluteBins]
+    .map((x) => String(x || '').trim())
+    .filter((x, i, arr) => x && arr.indexOf(x) === i);
 }
 
 function buildXbsToolEnv() {
