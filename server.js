@@ -658,6 +658,18 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
     return;
   }
 
+  const preservedXbsPath = resolvePreservedXbsPath(entry);
+  if (preservedXbsPath) {
+    await query('update entries set download_count = download_count + 1 where id = ?', [id]);
+    const downloadName = buildSafeXbsDownloadName(entry.file_name, `${Date.now()}.xbs`);
+    res.download(preservedXbsPath, downloadName, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ code: 0, msg: `xbs 下载失败: ${err.message}` });
+      }
+    });
+    return;
+  }
+
   let tempFiles = null;
   try {
     const data = parseEntryJson(entry, cfg);
@@ -1102,7 +1114,7 @@ async function insertSingleEntry(row) {
       ver, has_faxian, has_sousuo, has_tu, has_shengyin,
       source_count, download_count, author_uid, author_name,
       file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, null, null, 0, ?, ?)`,
+    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
     [
       row.type,
       row.title,
@@ -1117,6 +1129,8 @@ async function insertSingleEntry(row) {
       row.source_count,
       row.author_uid,
       row.author_name,
+      row.file_path || null,
+      row.file_name || null,
       row.created_at,
       row.updated_at,
     ]
@@ -1171,6 +1185,14 @@ function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fi
     created_at: now,
     updated_at: now,
   };
+}
+
+function shouldPreserveUploadedXbs(file, convertedFromXbs, splitPublish, batchSize) {
+  if (!file || !convertedFromXbs) return false;
+  if (splitPublish) return false;
+  if (Number(batchSize) !== 1) return false;
+  const ext = path.extname(String(file.originalname || file.path || '')).toLowerCase();
+  return ext === '.xbs';
 }
 
 function buildListQuery(cfg, queryParams, options = {}) {
@@ -1326,9 +1348,16 @@ async function handleSingleAdd(req, res, cfg) {
   );
   row.code_text = JSON.stringify(parsed, null, 2);
   row.source_count = arr.length;
+  const preserveUploadedXbs = shouldPreserveUploadedXbs(req.file, convertedFromXbs, splitPublish, batchSize);
+  if (preserveUploadedXbs) {
+    row.file_path = path.relative(ROOT, req.file.path).replace(/\\/g, '/');
+    row.file_name = clipText(String(req.file.originalname || path.basename(req.file.path)), 512);
+  }
   const result = await insertSingleEntry(row);
 
-  cleanupUploadedFile(req.file);
+  if (!preserveUploadedXbs) {
+    cleanupUploadedFile(req.file);
+  }
 
   res.json({
     code: 1,
@@ -2195,6 +2224,27 @@ function readEntryRawJson(entry) {
   }
 
   return '[]';
+}
+
+function resolvePreservedXbsPath(entry) {
+  const rel = String(entry?.file_path || '').trim();
+  if (!rel) return null;
+  if (path.extname(rel).toLowerCase() !== '.xbs') return null;
+
+  const fullPath = path.join(ROOT, rel);
+  if (!fs.existsSync(fullPath)) return null;
+
+  const stat = fs.statSync(fullPath);
+  if (!stat.isFile() || stat.size < 1) return null;
+  return fullPath;
+}
+
+function buildSafeXbsDownloadName(rawName, fallbackName) {
+  const fallback = String(fallbackName || `${Date.now()}.xbs`).trim() || `${Date.now()}.xbs`;
+  const raw = clipText(String(rawName || '').trim(), 255);
+  if (!raw) return fallback;
+  if (!raw.toLowerCase().endsWith('.xbs')) return `${raw}.xbs`;
+  return raw;
 }
 
 function buildPageItems(current, total) {
