@@ -13,6 +13,13 @@ const ROOT = __dirname;
 const UPLOAD_DIR = path.join(ROOT, 'uploads');
 const PORT = Number(process.env.PORT || 3000);
 
+function resolvePathFromRoot(rawValue, fallbackAbsolutePath) {
+  const value = String(rawValue || '').trim();
+  if (!value) return fallbackAbsolutePath;
+  if (path.isAbsolute(value)) return value;
+  return path.resolve(ROOT, value);
+}
+
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
 const DB_PORT = Number(process.env.DB_PORT || 3306);
 const DB_USER = process.env.DB_USER || 'root';
@@ -66,11 +73,14 @@ const INSTALL_SHOT_2 =
 const INSTALL_SHOT_3 =
   process.env.INSTALL_SHOT_3 || '/static/images/install/shot-3-done.jpg';
 const PYTHON_BIN = process.env.PYTHON_BIN || '';
-const XBS_TOOL_PATH =
-  process.env.XBS_TOOL_PATH ||
-  '/Users/mantou/Documents/idea/3.2/xiangseSkill/tools/scripts/xbs_tool.py';
-const XBSREBUILD_ROOT =
-  process.env.XBSREBUILD_ROOT || '/Users/mantou/Documents/idea/3.2/xbsrebuild';
+const XBS_TOOL_PATH = resolvePathFromRoot(
+  process.env.XBS_TOOL_PATH,
+  path.join(ROOT, 'tools/scripts/xbs_tool.py')
+);
+const XBSREBUILD_ROOT = resolvePathFromRoot(
+  process.env.XBSREBUILD_ROOT,
+  path.join(ROOT, 'xbsrebuild')
+);
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 const IS_GITHUB_AUTH_ENABLED = Boolean(GITHUB_OAUTH_CLIENT_ID && GITHUB_OAUTH_CLIENT_SECRET);
@@ -1299,7 +1309,9 @@ function buildTempFilePath(prefix, ext) {
 
 async function runXbsTool(action, inputPath, outputPath) {
   if (!fs.existsSync(XBS_TOOL_PATH)) {
-    throw new Error(`找不到 xbs 转换脚本: ${XBS_TOOL_PATH}`);
+    throw new Error(
+      `找不到 xbs 转换脚本: ${XBS_TOOL_PATH}（请检查 XBS_TOOL_PATH，或确认 tools/scripts/xbs_tool.py 已存在）`
+    );
   }
 
   const pythonCandidates = [PYTHON_BIN, 'python3', 'python']
@@ -1310,10 +1322,7 @@ async function runXbsTool(action, inputPath, outputPath) {
   for (const bin of pythonCandidates) {
     try {
       await runProcess(bin, [XBS_TOOL_PATH, action, '-i', inputPath, '-o', outputPath], {
-        env: {
-          ...process.env,
-          XBSREBUILD_ROOT,
-        },
+        env: buildXbsToolEnv(),
       });
       return;
     } catch (error) {
@@ -1324,7 +1333,17 @@ async function runXbsTool(action, inputPath, outputPath) {
     }
   }
 
-  throw new Error(lastError?.message || '转换命令执行失败');
+  throw new Error(
+    `${lastError?.message || '转换命令执行失败'}（请确认 Python/Go 环境可用，XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
+  );
+}
+
+function buildXbsToolEnv() {
+  const env = { ...process.env };
+  if (String(XBSREBUILD_ROOT || '').trim()) {
+    env.XBSREBUILD_ROOT = XBSREBUILD_ROOT;
+  }
+  return env;
 }
 
 function runProcess(command, args, options = {}) {
