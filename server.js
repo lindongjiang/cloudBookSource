@@ -108,6 +108,7 @@ if (String(process.env.XBSREBUILD_ROOT || '').trim() && XBSREBUILD_CONFIG_ROOT !
 
 const XIANGSE_SOURCE_TYPES = new Set(['text', 'comic', 'video', 'audio']);
 const XIANGSE_REQUIRED_ACTIONS = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
+const XIANGSE_REQUESTINFO_REQUIRED_ACTIONS = new Set(['searchBook']);
 const XIANGSE_XPATH_FIELDS = [
   'list',
   'name',
@@ -1610,7 +1611,11 @@ function normalizeXiangseShuyuanPayload(payload) {
       }
 
       if (!isValidRequestInfo(action.requestInfo)) {
-        errors.push(`第${rowNo}条 ${actionKey}.requestInfo 不能为空`);
+        if (isActionRequestInfoRequired(actionKey)) {
+          errors.push(`第${rowNo}条 ${actionKey}.requestInfo 不能为空`);
+        } else {
+          warnings.push(`第${rowNo}条 ${actionKey}.requestInfo 为空，按香色兼容规则允许`);
+        }
       }
 
       if (action.parserID === 'DOM') {
@@ -1775,6 +1780,10 @@ function isValidRequestInfo(requestInfo) {
     return Object.keys(requestInfo).length > 0;
   }
   return false;
+}
+
+function isActionRequestInfoRequired(actionKey) {
+  return XIANGSE_REQUESTINFO_REQUIRED_ACTIONS.has(actionKey);
 }
 
 function hasActionRequestInfo(action) {
