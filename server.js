@@ -1337,8 +1337,9 @@ async function runXbsTool(action, inputPath, outputPath) {
 
   const pythonCandidates = buildPythonCandidates();
 
-  let lastError;
+  let firstRuntimeError = null;
   const triedBins = [];
+  const notFoundBins = [];
   for (const bin of pythonCandidates) {
     triedBins.push(bin);
     try {
@@ -1347,15 +1348,23 @@ async function runXbsTool(action, inputPath, outputPath) {
       });
       return;
     } catch (error) {
-      lastError = error;
       if (error && error.code === 'ENOENT') {
+        notFoundBins.push(bin);
         continue;
       }
+      firstRuntimeError = { bin, error };
+      break;
     }
   }
 
+  if (firstRuntimeError) {
+    throw new Error(
+      `xbs 转换执行失败（python=${firstRuntimeError.bin}）：${firstRuntimeError.error?.message || 'unknown error'}（已尝试Python: ${triedBins.join(', ')}；XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
+    );
+  }
+
   throw new Error(
-    `${lastError?.message || '转换命令执行失败'}（已尝试Python: ${triedBins.join(', ')}；请确认 Python/Go 环境可用，XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
+    `未找到可用的 Python 可执行文件（已尝试Python: ${triedBins.join(', ')}；未找到: ${notFoundBins.join(', ')}；请确认 Python/Go 环境可用，XBSREBUILD_ROOT=${XBSREBUILD_ROOT}）`
   );
 }
 
