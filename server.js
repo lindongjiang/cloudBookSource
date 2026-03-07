@@ -1187,9 +1187,8 @@ function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fi
   };
 }
 
-function shouldPreserveUploadedXbs(file, convertedFromXbs, splitPublish, batchSize) {
+function shouldPreserveUploadedXbs(file, convertedFromXbs, batchSize) {
   if (!file || !convertedFromXbs) return false;
-  if (splitPublish) return false;
   if (Number(batchSize) !== 1) return false;
   const ext = path.extname(String(file.originalname || file.path || '')).toLowerCase();
   return ext === '.xbs';
@@ -1354,7 +1353,7 @@ async function handleSingleAdd(req, res, cfg) {
   );
   row.code_text = JSON.stringify(parsed, null, 2);
   row.source_count = arr.length;
-  const preserveUploadedXbs = shouldPreserveUploadedXbs(req.file, convertedFromXbs, splitPublish, batchSize);
+  const preserveUploadedXbs = shouldPreserveUploadedXbs(req.file, convertedFromXbs, batchSize);
   if (preserveUploadedXbs) {
     row.file_path = path.relative(ROOT, req.file.path).replace(/\\/g, '/');
     row.file_name = clipText(String(req.file.originalname || path.basename(req.file.path)), 512);
