@@ -73,17 +73,38 @@ const INSTALL_SHOT_2 =
 const INSTALL_SHOT_3 =
   process.env.INSTALL_SHOT_3 || '/static/images/install/shot-3-done.jpg';
 const PYTHON_BIN = process.env.PYTHON_BIN || '';
-const XBS_TOOL_PATH = resolvePathFromRoot(
-  process.env.XBS_TOOL_PATH,
-  path.join(ROOT, 'tools/scripts/xbs_tool.py')
-);
-const XBSREBUILD_ROOT = resolvePathFromRoot(
+const XBS_TOOL_DEFAULT_PATH = path.join(ROOT, 'tools/scripts/xbs_tool.py');
+const XBS_TOOL_CONFIG_PATH = resolvePathFromRoot(process.env.XBS_TOOL_PATH, XBS_TOOL_DEFAULT_PATH);
+const XBS_TOOL_PATH =
+  fs.existsSync(XBS_TOOL_CONFIG_PATH) || !fs.existsSync(XBS_TOOL_DEFAULT_PATH)
+    ? XBS_TOOL_CONFIG_PATH
+    : XBS_TOOL_DEFAULT_PATH;
+const XBSREBUILD_DEFAULT_ROOT = path.join(ROOT, 'xbsrebuild');
+const XBSREBUILD_CONFIG_ROOT = resolvePathFromRoot(
   process.env.XBSREBUILD_ROOT,
-  path.join(ROOT, 'xbsrebuild')
+  XBSREBUILD_DEFAULT_ROOT
 );
+const XBSREBUILD_ROOT =
+  fs.existsSync(XBSREBUILD_CONFIG_ROOT) || !fs.existsSync(XBSREBUILD_DEFAULT_ROOT)
+    ? XBSREBUILD_CONFIG_ROOT
+    : XBSREBUILD_DEFAULT_ROOT;
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 const IS_GITHUB_AUTH_ENABLED = Boolean(GITHUB_OAUTH_CLIENT_ID && GITHUB_OAUTH_CLIENT_SECRET);
+
+if (String(process.env.XBS_TOOL_PATH || '').trim() && XBS_TOOL_CONFIG_PATH !== XBS_TOOL_PATH) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[xbs] 配置的 XBS_TOOL_PATH 无效，已回退为项目路径: ${XBS_TOOL_PATH}`
+  );
+}
+
+if (String(process.env.XBSREBUILD_ROOT || '').trim() && XBSREBUILD_CONFIG_ROOT !== XBSREBUILD_ROOT) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[xbs] 配置的 XBSREBUILD_ROOT 无效，已回退为项目路径: ${XBSREBUILD_ROOT}`
+  );
+}
 
 const XIANGSE_SOURCE_TYPES = new Set(['text', 'comic', 'video', 'audio']);
 const XIANGSE_REQUIRED_ACTIONS = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
