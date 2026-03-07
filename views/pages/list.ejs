@@ -197,25 +197,30 @@
     }
 
     const downloadUrl = location.origin + '/yuedu/<%= cfg.key %>/<%= preferXbsExport ? 'xbss' : 'jsons' %>?id=' + ids.join('-');
-    const tempUrl = await buildTempUrl(downloadUrl);
-    if (!tempUrl || tempUrl === '0') {
-      layui.layer.msg('生成失败，请重试');
-      return;
+    let publishUrl = downloadUrl;
+    if (!preferXbsExport) {
+      publishUrl = await buildTempUrl(downloadUrl);
+      if (!publishUrl || publishUrl === '0') {
+        layui.layer.msg('生成失败，请重试');
+        return;
+      }
     }
 
     layui.layer.open({
       type: 1,
       area: ['370px', '<%= preferXbsExport ? '260px' : '320px' %>'],
-      title: '生成的地址均为临时数据，不定时清理',
+      title: '<%= preferXbsExport ? "已生成下载地址" : "生成的地址均为临时数据，不定时清理" %>',
       shade: 0.6,
       skin: 'addjson-class',
       content: document.getElementById('open_1').innerHTML,
       success: function () {
-        document.getElementById('jsoninput').value = tempUrl;
-        document.getElementById('datadown').href = tempUrl;
+        document.getElementById('jsoninput').value = publishUrl;
+        const downBtn = document.getElementById('datadown');
+        downBtn.href = downloadUrl;
+        downBtn.target = '_blank';
         const importBtn = document.getElementById('yueduurl');
         if (importBtn) {
-          importBtn.href = '<%= cfg.importPrefix %>' + tempUrl;
+          importBtn.href = '<%= cfg.importPrefix %>' + publishUrl;
         }
       },
     });

@@ -217,6 +217,7 @@ const SITE_MODE_CONFIG = {
 };
 
 const app = express();
+app.set('trust proxy', true);
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(ROOT, 'views'));
@@ -523,9 +524,11 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
     return;
   }
 
-  const jsonUrl = `${req.protocol}://${req.get('host')}/yuedu/${cfg.key}/json/id/${entry.id}.json`;
-  const xbsUrl = `${req.protocol}://${req.get('host')}/yuedu/${cfg.key}/xbs/id/${entry.id}.xbs`;
-  const importUrl = `${cfg.importPrefix}${jsonUrl}`;
+  const jsonPath = `/yuedu/${cfg.key}/json/id/${entry.id}.json`;
+  const xbsPath = `/yuedu/${cfg.key}/xbs/id/${entry.id}.xbs`;
+  const jsonUrl = jsonPath;
+  const xbsUrl = xbsPath;
+  const importUrl = `${cfg.importPrefix}${getRequestOrigin(req)}${jsonPath}`;
 
   res.render('pages/detail', {
     pageTitle: `${entry.title} - ${res.locals.siteMeta.siteName}`,
@@ -803,7 +806,7 @@ app.get('/index/durl/add.html', async (req, res) => {
     Date.now() + 3 * 24 * 3600 * 1000,
   ]);
 
-  const shortUrl = `${req.protocol}://${req.get('host')}/d/${hash}`;
+  const shortUrl = `${getRequestOrigin(req)}/d/${hash}`;
   res.type('text/plain').send(shortUrl);
 });
 
@@ -1891,6 +1894,18 @@ function resolveLoginErrorMessage(code) {
   return map[key] || '';
 }
 
+function getRequestOrigin(req) {
+  const xfProto = String(req.headers['x-forwarded-proto'] || '')
+    .split(',')[0]
+    .trim();
+  const xfHost = String(req.headers['x-forwarded-host'] || '')
+    .split(',')[0]
+    .trim();
+  const proto = xfProto || req.protocol || 'http';
+  const host = xfHost || req.get('host') || 'localhost';
+  return `${proto}://${host}`;
+}
+
 function buildGithubOauthCallbackUrl(req) {
   const configured = String(GITHUB_OAUTH_CALLBACK_URL || '').trim();
   if (configured) {
@@ -1898,10 +1913,10 @@ function buildGithubOauthCallbackUrl(req) {
       return configured;
     }
     if (configured.startsWith('/')) {
-      return `${req.protocol}://${req.get('host')}${configured}`;
+      return `${getRequestOrigin(req)}${configured}`;
     }
   }
-  return `${req.protocol}://${req.get('host')}/index/login/github/callback`;
+  return `${getRequestOrigin(req)}/index/login/github/callback`;
 }
 
 async function exchangeGithubAccessToken(req, code, state) {
