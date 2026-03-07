@@ -36,25 +36,21 @@
         <div class="layui-card-body">
           <div class="layui-row layui-col-space10">
             <div class="layui-col-xs12">
-              <input type="text" id="jsonurl" class="layui-input" value="<%= jsonUrl %>" />
+              <input type="text" id="downloadurl" class="layui-input" value="<%= siteMode === 'ios' ? xbsUrl : jsonUrl %>" />
             </div>
-            <div class="layui-col-xs4">
-              <a href="<%= jsonUrl %>" target="_blank" class="layui-btn layui-btn-fluid">下载JSON文件</a>
-            </div>
-            <div class="layui-col-xs4">
-              <a href="<%= xbsUrl %>" target="_blank" class="layui-btn layui-btn-fluid layui-btn-primary">下载XBS文件</a>
-            </div>
-            <div class="layui-col-xs4">
-              <a href="<%= importUrl %>" class="layui-btn layui-btn-fluid">3.x一键导入</a>
-            </div>
+            <% if (siteMode === 'ios') { %>
+              <div class="layui-col-xs12">
+                <a href="<%= xbsUrl %>" target="_blank" class="layui-btn layui-btn-fluid layui-btn-danger">下载XBS文件</a>
+              </div>
+            <% } else { %>
+              <div class="layui-col-xs6">
+                <a href="<%= jsonUrl %>" target="_blank" class="layui-btn layui-btn-fluid">下载JSON文件</a>
+              </div>
+              <div class="layui-col-xs6">
+                <a href="<%= importUrl %>" class="layui-btn layui-btn-fluid">3.x一键导入</a>
+              </div>
+            <% } %>
           </div>
-        </div>
-      </div>
-
-      <div class="layui-card" style="text-align: center;">
-        <div class="layui-card-header">二维码导入</div>
-        <div class="layui-card-body">
-          <div id="qrcode"></div>
         </div>
       </div>
     </div>
@@ -83,13 +79,6 @@
 <%- include('../partials/footer') %>
 
 <script>
-  const qrEl = document.getElementById('qrcode');
-  new QRCode(qrEl, {
-    text: document.getElementById('jsonurl').value,
-    width: 280,
-    height: 280,
-  });
-
   document.getElementById('copyCode').addEventListener('click', async function () {
     try {
       await navigator.clipboard.writeText(document.getElementById('jsonpre').innerText);

@@ -145,19 +145,16 @@
 </div>
 
 <% if (cfg.kind === 'single') { %>
+  <% const preferXbsExport = siteMode === 'ios'; %>
   <script type="text/html" id="open_1">
     <div class="layui-card">
       <div class="layui-card-header">网络导入</div>
       <div class="layui-card-body">
         <p><input type="text" class="layui-input" id="jsoninput"></p>
-        <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="jsondown" href="#">下载JSON文件</a></p>
-        <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="yueduurl" href="#">3.0一键导入</a></p>
-      </div>
-    </div>
-    <div class="layui-card">
-      <div class="layui-card-header">二维码导入</div>
-      <div class="layui-card-body">
-        <div id="qrcode"></div>
+        <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="datadown" href="#">下载<%= preferXbsExport ? 'XBS' : 'JSON' %>文件</a></p>
+        <% if (!preferXbsExport) { %>
+          <p><a class="layui-btn layui-btn-normal layui-btn-fluid" id="yueduurl" href="#">3.0一键导入</a></p>
+        <% } %>
       </div>
     </div>
   </script>
@@ -199,8 +196,8 @@
       return;
     }
 
-    const jsonsUrl = location.origin + '/yuedu/<%= cfg.key %>/jsons?id=' + ids.join('-');
-    const tempUrl = await buildTempUrl(jsonsUrl);
+    const downloadUrl = location.origin + '/yuedu/<%= cfg.key %>/<%= preferXbsExport ? 'xbss' : 'jsons' %>?id=' + ids.join('-');
+    const tempUrl = await buildTempUrl(downloadUrl);
     if (!tempUrl || tempUrl === '0') {
       layui.layer.msg('生成失败，请重试');
       return;
@@ -208,22 +205,18 @@
 
     layui.layer.open({
       type: 1,
-      area: ['370px', '500px'],
+      area: ['370px', '<%= preferXbsExport ? '260px' : '320px' %>'],
       title: '生成的地址均为临时数据，不定时清理',
       shade: 0.6,
       skin: 'addjson-class',
       content: document.getElementById('open_1').innerHTML,
       success: function () {
         document.getElementById('jsoninput').value = tempUrl;
-        document.getElementById('jsondown').href = tempUrl;
-        document.getElementById('yueduurl').href = '<%= cfg.importPrefix %>' + tempUrl;
-        const qrEl = document.getElementById('qrcode');
-        qrEl.innerHTML = '';
-        new QRCode(qrEl, {
-          text: tempUrl,
-          width: 280,
-          height: 280,
-        });
+        document.getElementById('datadown').href = tempUrl;
+        const importBtn = document.getElementById('yueduurl');
+        if (importBtn) {
+          importBtn.href = '<%= cfg.importPrefix %>' + tempUrl;
+        }
       },
     });
   }

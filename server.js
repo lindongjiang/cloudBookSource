@@ -91,6 +91,7 @@ const XBSREBUILD_ROOT =
 const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 const IS_GITHUB_AUTH_ENABLED = Boolean(GITHUB_OAUTH_CLIENT_ID && GITHUB_OAUTH_CLIENT_SECRET);
+const ENABLE_SAMPLE_SEED = String(process.env.ENABLE_SAMPLE_SEED || '0') === '1';
 
 if (String(process.env.XBS_TOOL_PATH || '').trim() && XBS_TOOL_CONFIG_PATH !== XBS_TOOL_PATH) {
   // eslint-disable-next-line no-console
@@ -457,7 +458,7 @@ app.get('/yuedu/:type/index.html', async (req, res, next) => {
   const pageSize = 60;
   const requestedPage = toInt(req.query.page, 1);
 
-  const { whereSql, params, orderSql } = buildListQuery(cfg, req.query);
+  const { whereSql, params, orderSql } = buildListQuery(cfg, req.query, { siteMode: res.locals.siteMode });
   const countRows = await query(`select count(*) as c from entries where ${whereSql}`, params);
   const total = Number(countRows[0]?.c || 0);
 
@@ -656,12 +657,16 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
 
   let tempFiles = null;
   try {
-    const data = JSON.parse(readEntryRawJson(entry));
+    const data = parseEntryJson(entry, cfg);
     tempFiles = await convertJsonDataToXbs(data);
+    ensureGeneratedXbsFile(tempFiles.xbsPath);
     await query('update entries set download_count = download_count + 1 where id = ?', [id]);
 
-    res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, () => {
+    res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, (err) => {
       cleanupTempFiles(tempFiles);
+      if (err && !res.headersSent) {
+        res.status(500).json({ code: 0, msg: `xbs 下载失败: ${err.message}` });
+      }
     });
   } catch (error) {
     cleanupTempFiles(tempFiles);
@@ -710,6 +715,60 @@ app.get('/yuedu/:type/jsons', async (req, res, next) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename=${Date.now()}.json`);
   res.send(JSON.stringify(merged, null, 2));
+});
+
+app.get('/yuedu/:type/xbss', async (req, res, next) => {
+  const cfg = TYPE_CONFIG[req.params.type];
+  if (!cfg) {
+    next();
+    return;
+  }
+
+  const ids = String(req.query.id || req.query.ids || '')
+    .split(/[-,]/)
+    .map((x) => toInt(x, 0))
+    .filter((x) => x > 0);
+
+  if (ids.length < 1) {
+    res.status(400).json({ code: 0, msg: 'id required' });
+    return;
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await query(
+    `select * from entries where type = ? and is_deleted = 0 and id in (${placeholders})`,
+    [cfg.key, ...ids]
+  );
+
+  const merged = [];
+  for (const row of rows) {
+    const parsed = parseEntryJson(row, cfg);
+    if (Array.isArray(parsed)) {
+      merged.push(...parsed);
+    } else {
+      merged.push(parsed);
+    }
+  }
+
+  if (rows.length > 0) {
+    const hitPlaceholders = rows.map(() => '?').join(',');
+    await query(`update entries set download_count = download_count + 1 where id in (${hitPlaceholders})`, rows.map((x) => x.id));
+  }
+
+  let tempFiles = null;
+  try {
+    tempFiles = await convertJsonDataToXbs(merged);
+    ensureGeneratedXbsFile(tempFiles.xbsPath);
+    res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, (err) => {
+      cleanupTempFiles(tempFiles);
+      if (err && !res.headersSent) {
+        res.status(500).json({ code: 0, msg: `xbs 下载失败: ${err.message}` });
+      }
+    });
+  } catch (error) {
+    cleanupTempFiles(tempFiles);
+    res.status(500).json({ code: 0, msg: `xbs 生成失败: ${error.message}` });
+  }
 });
 
 app.get('/index/durl/add.html', async (req, res) => {
@@ -907,6 +966,10 @@ async function ensureUsersOauthColumns() {
 }
 
 async function seedData() {
+  if (!ENABLE_SAMPLE_SEED) {
+    return;
+  }
+
   const countRows = await query('select count(*) as c from entries');
   const count = Number(countRows[0]?.c || 0);
   if (count > 0) {
@@ -1105,9 +1168,10 @@ function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fi
   };
 }
 
-function buildListQuery(cfg, queryParams) {
+function buildListQuery(cfg, queryParams, options = {}) {
   const where = ['type = ?', 'is_deleted = 0'];
   const params = [cfg.key];
+  const siteMode = String(options.siteMode || '').trim();
 
   const keys = String(queryParams.keys || '').trim();
   if (keys) {
@@ -1123,6 +1187,11 @@ function buildListQuery(cfg, queryParams) {
   }
 
   if (cfg.kind === 'single') {
+    if (cfg.key === 'shuyuan' && siteMode === 'ios') {
+      where.push("title not like '示例书源 %'");
+      where.push("source_url not like 'https://example%.com'");
+    }
+
     if (queryParams.ver === '2' || queryParams.ver === '3') {
       where.push('ver = ?');
       params.push(Number(queryParams.ver));
@@ -1409,6 +1478,16 @@ async function convertJsonDataToXbs(data) {
 
   await runXbsTool('json2xbs', jsonPath, xbsPath);
   return { jsonPath, xbsPath };
+}
+
+function ensureGeneratedXbsFile(xbsPath) {
+  if (!xbsPath || !fs.existsSync(xbsPath)) {
+    throw new Error('未生成 xbs 文件');
+  }
+  const stat = fs.statSync(xbsPath);
+  if (!stat.isFile() || stat.size < 1) {
+    throw new Error('生成的 xbs 文件为空');
+  }
 }
 
 function buildTempFilePath(prefix, ext) {
