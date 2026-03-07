@@ -661,7 +661,8 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
   let tempFiles = null;
   try {
     const data = parseEntryJson(entry, cfg);
-    tempFiles = await convertJsonDataToXbs(data);
+    const xbsPayload = buildXbsExportPayload(data);
+    tempFiles = await convertJsonDataToXbs(xbsPayload);
     ensureGeneratedXbsFile(tempFiles.xbsPath);
     await query('update entries set download_count = download_count + 1 where id = ?', [id]);
 
@@ -760,7 +761,8 @@ app.get('/yuedu/:type/xbss', async (req, res, next) => {
 
   let tempFiles = null;
   try {
-    tempFiles = await convertJsonDataToXbs(merged);
+    const xbsPayload = buildXbsExportPayload(merged);
+    tempFiles = await convertJsonDataToXbs(xbsPayload);
     ensureGeneratedXbsFile(tempFiles.xbsPath);
     res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, (err) => {
       cleanupTempFiles(tempFiles);
@@ -1483,6 +1485,63 @@ async function convertJsonDataToXbs(data) {
   return { jsonPath, xbsPath };
 }
 
+function buildXbsExportPayload(data) {
+  const list = extractSourceListFromPayload(data)
+    .filter((item) => isPlainObject(item))
+    .map((item) => normalizeSourceForXbs(item));
+
+  if (list.length < 1) {
+    throw new Error('无可导出的书源数据');
+  }
+
+  const out = {};
+  list.forEach((item, idx) => {
+    const baseName = clipText(
+      firstNonEmptyString(item.sourceName, item.bookSourceName, item.title, item.name) || `source-${idx + 1}`,
+      512
+    );
+    item.sourceName = baseName;
+    const key = ensureUniqueMapKey(out, baseName);
+    out[key] = item;
+  });
+  return out;
+}
+
+function normalizeSourceForXbs(source) {
+  const out = JSON.parse(JSON.stringify(source));
+  out.enable = normalizeXbsEnableValue(out.enable);
+  return out;
+}
+
+function normalizeXbsEnableValue(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return 1;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 1 : 0;
+  }
+
+  const text = String(value).trim().toLowerCase();
+  if (text === 'true' || text === 'yes' || text === 'on') return 1;
+  if (text === 'false' || text === 'no' || text === 'off') return 0;
+
+  const num = Number(text);
+  if (Number.isFinite(num)) return num > 0 ? 1 : 0;
+  return 1;
+}
+
+function ensureUniqueMapKey(mapObj, preferredKey) {
+  let key = String(preferredKey || '').trim() || 'source';
+  if (!Object.prototype.hasOwnProperty.call(mapObj, key)) {
+    return key;
+  }
+  let i = 2;
+  while (Object.prototype.hasOwnProperty.call(mapObj, `${key}-${i}`)) {
+    i += 1;
+  }
+  return `${key}-${i}`;
+}
+
 function ensureGeneratedXbsFile(xbsPath) {
   if (!xbsPath || !fs.existsSync(xbsPath)) {
     throw new Error('未生成 xbs 文件');
@@ -1841,9 +1900,12 @@ function patchXiangseDomXPath(action, actionKey, rowNo, warnings) {
     if (typeof action[field] !== 'string') continue;
     if (action[field].includes('@js:')) continue;
     if (!action[field].includes('.//')) continue;
-
-    action[field] = action[field].replace(/\.\/\//g, '//');
-    warnings.push(`第${rowNo}条 ${actionKey}.${field} 已将 .// 修正为 //`);
+    const raw = action[field];
+    const fixed = raw.replace(/(^|\|\|)\.\/\//g, '$1//');
+    if (fixed !== raw) {
+      action[field] = fixed;
+      warnings.push(`第${rowNo}条 ${actionKey}.${field} 已将前缀 .// 修正为 //`);
+    }
   }
 }
 
