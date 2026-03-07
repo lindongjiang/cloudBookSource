@@ -7,7 +7,11 @@
       <div class="top-tools">
         <% if (cfg.kind === 'single') { %>
           <input type="checkbox" id="class_all" title="全选" />
-          <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="addjson">生成</button>
+          <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="addjson"><%= preferXbsExport ? '下载选中XBS' : '生成' %></button>
+          <% if (currentUser) { %>
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" id="delSelected">删除选中(仅自己)</button>
+            <button type="button" class="layui-btn layui-btn-sm layui-btn-danger layui-btn-primary" id="delMine">一键删我上传</button>
+          <% } %>
         <% } %>
         <a href="/yuedu/<%= cfg.key %>/add.html" class="layui-btn layui-btn-sm layui-btn-normal">新建</a>
         <button type="button" class="layui-btn layui-btn-sm layui-btn-primary m-right" id="sokeybtn" style="top: 5px;">
@@ -197,13 +201,17 @@
     }
 
     const downloadUrl = location.origin + '/yuedu/<%= cfg.key %>/<%= preferXbsExport ? 'xbss' : 'jsons' %>?id=' + ids.join('-');
+    if (preferXbsExport) {
+      window.open(downloadUrl, '_blank');
+      layui.layer.msg('已开始下载XBS合集，下载次数会自动统计');
+      return;
+    }
+
     let publishUrl = downloadUrl;
-    if (!preferXbsExport) {
-      publishUrl = await buildTempUrl(downloadUrl);
-      if (!publishUrl || publishUrl === '0') {
-        layui.layer.msg('生成失败，请重试');
-        return;
-      }
+    publishUrl = await buildTempUrl(downloadUrl);
+    if (!publishUrl || publishUrl === '0') {
+      layui.layer.msg('生成失败，请重试');
+      return;
     }
 
     layui.layer.open({
@@ -226,11 +234,73 @@
     });
   }
 
+  async function deleteSelectedMine() {
+    const ids = Array.from(document.querySelectorAll('.class_one:checked')).map(function (x) { return x.value; });
+    if (ids.length < 1) {
+      layui.layer.msg('请先勾选要删除的条目');
+      return;
+    }
+
+    const res = await fetch('/yuedu/<%= cfg.key %>/del-selected.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ids }),
+    });
+    const data = await res.json();
+    layui.layer.msg(data.msg || '操作完成');
+    if (data.code === 1) {
+      setTimeout(function () {
+        window.location.reload();
+      }, 450);
+    }
+  }
+
+  async function deleteAllMine() {
+    const res = await fetch('/yuedu/<%= cfg.key %>/del-mine.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    layui.layer.msg(data.msg || '操作完成');
+    if (data.code === 1) {
+      setTimeout(function () {
+        window.location.reload();
+      }, 450);
+    }
+  }
+
   document.getElementById('addjson').addEventListener('click', function () {
     onGenerate().catch(function (err) {
       console.error(err);
       layui.layer.msg('操作失败');
     });
   });
+
+  const delSelectedBtn = document.getElementById('delSelected');
+  if (delSelectedBtn) {
+    delSelectedBtn.addEventListener('click', function () {
+      layui.layer.confirm('仅会删除你自己上传且已勾选的书源，确认继续吗？', { icon: 3, title: '提示' }, function (index) {
+        layui.layer.close(index);
+        deleteSelectedMine().catch(function (err) {
+          console.error(err);
+          layui.layer.msg('删除失败');
+        });
+      });
+    });
+  }
+
+  const delMineBtn = document.getElementById('delMine');
+  if (delMineBtn) {
+    delMineBtn.addEventListener('click', function () {
+      layui.layer.confirm('将删除你上传的当前分类全部书源，确认继续吗？', { icon: 3, title: '提示' }, function (index) {
+        layui.layer.close(index);
+        deleteAllMine().catch(function (err) {
+          console.error(err);
+          layui.layer.msg('删除失败');
+        });
+      });
+    });
+  }
 </script>
 <% } %>

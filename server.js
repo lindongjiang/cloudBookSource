@@ -92,6 +92,7 @@ const MYSQL_MIN_MAJOR = 5;
 const MYSQL_MIN_MINOR = 7;
 const IS_GITHUB_AUTH_ENABLED = Boolean(GITHUB_OAUTH_CLIENT_ID && GITHUB_OAUTH_CLIENT_SECRET);
 const ENABLE_SAMPLE_SEED = String(process.env.ENABLE_SAMPLE_SEED || '0') === '1';
+const ADMIN_UID = 1000;
 
 if (String(process.env.XBS_TOOL_PATH || '').trim() && XBS_TOOL_CONFIG_PATH !== XBS_TOOL_PATH) {
   // eslint-disable-next-line no-console
@@ -598,7 +599,7 @@ app.get('/yuedu/:type/del/id/:id.html', requireLoginJson, async (req, res, next)
   }
 
   const id = toInt(req.params.id, 0);
-  const rows = await query('select id from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
+  const rows = await query('select id, author_uid from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
     id,
     cfg.key,
   ]);
@@ -608,8 +609,98 @@ app.get('/yuedu/:type/del/id/:id.html', requireLoginJson, async (req, res, next)
     return;
   }
 
+  const target = rows[0];
+  if (!canManageEntry(req.session.user, target.author_uid)) {
+    res.json({ code: 0, msg: '只能删除自己上传的书源', data: '', url: '', wait: 2 });
+    return;
+  }
+
   await query('update entries set is_deleted = 1, updated_at = ? where id = ?', [Date.now(), id]);
   res.json({ code: 1, msg: '删除成功', data: '', url: `/yuedu/${cfg.key}/index.html`, wait: 1 });
+});
+
+app.post('/yuedu/:type/del-selected.json', requireLoginJson, async (req, res, next) => {
+  const cfg = TYPE_CONFIG[req.params.type];
+  if (!cfg) {
+    next();
+    return;
+  }
+
+  const ids = parseIdList(req.body?.ids ?? req.body?.id ?? '');
+  if (ids.length < 1) {
+    res.json({ code: 0, msg: '请先勾选要删除的数据', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const rows = await query(
+    `select id, author_uid from entries where type = ? and is_deleted = 0 and id in (${placeholders})`,
+    [cfg.key, ...ids]
+  );
+  if (rows.length < 1) {
+    res.json({ code: 0, msg: '选中的数据不存在', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const allowedIds = rows
+    .filter((row) => canManageEntry(req.session.user, row.author_uid))
+    .map((row) => Number(row.id))
+    .filter((id) => id > 0);
+
+  if (allowedIds.length < 1) {
+    res.json({ code: 0, msg: '选中的数据不属于你，无法删除', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const now = Date.now();
+  const allowPlaceholders = allowedIds.map(() => '?').join(',');
+  const result = await query(
+    `update entries set is_deleted = 1, updated_at = ? where type = ? and id in (${allowPlaceholders})`,
+    [now, cfg.key, ...allowedIds]
+  );
+  const affected = Number(result?.affectedRows || 0);
+  const skipped = ids.length - allowedIds.length;
+  const skipText = skipped > 0 ? `，跳过 ${skipped} 条（无权限或不存在）` : '';
+  res.json({
+    code: 1,
+    msg: `已删除 ${affected} 条${skipText}`,
+    data: '',
+    url: `/yuedu/${cfg.key}/index.html`,
+    wait: 1,
+  });
+});
+
+app.post('/yuedu/:type/del-mine.json', requireLoginJson, async (req, res, next) => {
+  const cfg = TYPE_CONFIG[req.params.type];
+  if (!cfg) {
+    next();
+    return;
+  }
+
+  const uid = Number(req.session?.user?.uid || 0);
+  if (!(uid > 0)) {
+    res.json({ code: 0, msg: '请先登录', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const now = Date.now();
+  const result = await query(
+    'update entries set is_deleted = 1, updated_at = ? where type = ? and is_deleted = 0 and author_uid = ?',
+    [now, cfg.key, uid]
+  );
+  const affected = Number(result?.affectedRows || 0);
+  if (affected < 1) {
+    res.json({ code: 0, msg: '你暂时没有可删除的书源', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  res.json({
+    code: 1,
+    msg: `已删除你上传的 ${affected} 条书源`,
+    data: '',
+    url: `/yuedu/${cfg.key}/index.html`,
+    wait: 1,
+  });
 });
 
 app.get('/yuedu/:type/json/id/:id.json', async (req, res, next) => {
@@ -2347,6 +2438,31 @@ function isTruthyFlag(value) {
     .trim()
     .toLowerCase();
   return text === '1' || text === 'true' || text === 'on' || text === 'yes';
+}
+
+function parseIdList(value) {
+  const arr = Array.isArray(value)
+    ? value
+    : String(value || '')
+        .split(/[-,\s]+/)
+        .filter(Boolean);
+  const out = [];
+  const seen = new Set();
+  for (const item of arr) {
+    const id = toInt(item, 0);
+    if (id < 1) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+function canManageEntry(user, authorUid) {
+  const uid = Number(user?.uid || 0);
+  if (!(uid > 0)) return false;
+  if (uid === ADMIN_UID) return true;
+  return uid === Number(authorUid || 0);
 }
 
 function isPlainObject(value) {
