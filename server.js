@@ -1026,6 +1026,84 @@ async function insertEntry(entry) {
   );
 }
 
+async function insertSingleEntry(row) {
+  return query(
+    `insert into entries(
+      type, title, source_url, code_text, content_html,
+      ver, has_faxian, has_sousuo, has_tu, has_shengyin,
+      source_count, download_count, author_uid, author_name,
+      file_path, file_name, is_deleted, created_at, updated_at
+    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, null, null, 0, ?, ?)`,
+    [
+      row.type,
+      row.title,
+      row.source_url,
+      row.code_text,
+      row.content_html,
+      row.ver,
+      row.has_faxian,
+      row.has_sousuo,
+      row.has_tu,
+      row.has_shengyin,
+      row.source_count,
+      row.author_uid,
+      row.author_name,
+      row.created_at,
+      row.updated_at,
+    ]
+  );
+}
+
+function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fixedTimestamp) {
+  const source = isPlainObject(sourceObj) ? sourceObj : {};
+  const now = fixedTimestamp || Date.now();
+
+  const title = clipText(
+    String(
+      source.bookSourceName ||
+        source.sourceName ||
+        source.title ||
+        source.name ||
+        fallbackTitle ||
+        `${cfg.label}-${now}`
+    ),
+    512
+  );
+
+  const sourceUrl = clipText(
+    String(source.bookSourceUrl || source.sourceUrl || source.url || body.source_url || ''),
+    2048
+  );
+
+  const ver = toInt(body.ver, 0) || toInt(source.ver, 0) || 3;
+  const hasFaxian = isTruthyFlag(body.faxian) ? 1 : source.enabledExplore || source.exploreUrl ? 1 : 0;
+  const hasSousuo =
+    isTruthyFlag(body.sousuo) || source.ruleSearch || source.searchUrl || hasActionRequestInfo(source.searchBook)
+      ? 1
+      : 0;
+  const sourceType = String(source.sourceType || '').toLowerCase();
+  const hasTu = isTruthyFlag(body.tu) || sourceType === 'comic' ? 1 : 0;
+  const hasShengyin = isTruthyFlag(body.shengyin) || sourceType === 'audio' ? 1 : 0;
+
+  return {
+    type: cfg.key,
+    title,
+    source_url: sourceUrl,
+    code_text: JSON.stringify(source, null, 2),
+    content_html: clipText(String(body.content || '').trim(), 30000),
+    ver,
+    has_faxian: hasFaxian,
+    has_sousuo: hasSousuo,
+    has_tu: hasTu,
+    has_shengyin: hasShengyin,
+    source_count: 1,
+    author_uid: user.uid,
+    author_name: user.displayName,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
 function buildListQuery(cfg, queryParams) {
   const where = ['type = ?', 'is_deleted = 0'];
   const params = [cfg.key];
@@ -1111,6 +1189,47 @@ async function handleSingleAdd(req, res, cfg) {
   parsed = normalizedResult.payload;
   const arr = Array.isArray(parsed) ? parsed : [parsed];
   const first = arr[0] || {};
+  const splitPublish = isTruthyFlag(req.body.split_publish);
+  const batchSize = arr.length;
+
+  if (splitPublish && batchSize > 1) {
+    if (batchSize > 500) {
+      cleanupUploadedFile(req.file);
+      res.json({
+        code: 0,
+        msg: `单次拆分发布最多 500 条，当前 ${batchSize} 条，请分批上传`,
+        data: '',
+        url: '',
+        wait: 2,
+      });
+      return;
+    }
+
+    const now = Date.now();
+    const createdIds = [];
+    for (let index = 0; index < arr.length; index += 1) {
+      const source = arr[index];
+      const fallbackTitle = `${cfg.label}-${now}-${index + 1}`;
+      const row = buildSingleSourceEntryRow(cfg, req.body, req.session.user, source, fallbackTitle, now);
+      const result = await insertSingleEntry(row);
+      createdIds.push(result.insertId);
+    }
+
+    cleanupUploadedFile(req.file);
+
+    const msgPrefix = convertedFromXbs
+      ? `${normalizedResult.successMessage}（已自动将 XBS 转为 JSON）`
+      : normalizedResult.successMessage;
+
+    res.json({
+      code: 1,
+      msg: `${msgPrefix}，已拆分批量发布 ${createdIds.length} 条`,
+      data: '',
+      url: `/yuedu/${cfg.key}/index.html`,
+      wait: 1,
+    });
+    return;
+  }
 
   const title = clipText(
     String(
@@ -1123,48 +1242,16 @@ async function handleSingleAdd(req, res, cfg) {
     512
   );
 
-  const sourceUrl = clipText(
-    String(first.bookSourceUrl || first.sourceUrl || first.url || req.body.source_url || ''),
-    2048
+  const row = buildSingleSourceEntryRow(
+    cfg,
+    req.body,
+    req.session.user,
+    first,
+    title
   );
-
-  const contentHtml = clipText(String(req.body.content || '').trim(), 30000);
-  const ver = toInt(req.body.ver, 0) || 3;
-
-  const hasFaxian = req.body.faxian ? 1 : first.enabledExplore || first.exploreUrl ? 1 : 0;
-  const hasSousuo =
-    req.body.sousuo || first.ruleSearch || first.searchUrl || hasActionRequestInfo(first.searchBook) ? 1 : 0;
-  const sourceType = String(first.sourceType || '').toLowerCase();
-  const hasTu = req.body.tu || sourceType === 'comic' ? 1 : 0;
-  const hasShengyin = req.body.shengyin || sourceType === 'audio' ? 1 : 0;
-
-  const now = Date.now();
-
-  const result = await query(
-    `insert into entries(
-      type, title, source_url, code_text, content_html,
-      ver, has_faxian, has_sousuo, has_tu, has_shengyin,
-      source_count, download_count, author_uid, author_name,
-      file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, null, null, 0, ?, ?)`,
-    [
-      cfg.key,
-      title,
-      sourceUrl,
-      JSON.stringify(parsed, null, 2),
-      contentHtml,
-      ver,
-      hasFaxian,
-      hasSousuo,
-      hasTu,
-      hasShengyin,
-      arr.length,
-      req.session.user.uid,
-      req.session.user.displayName,
-      now,
-      now,
-    ]
-  );
+  row.code_text = JSON.stringify(parsed, null, 2);
+  row.source_count = arr.length;
+  const result = await insertSingleEntry(row);
 
   cleanupUploadedFile(req.file);
 
@@ -1979,6 +2066,13 @@ function toInt(value, fallback) {
   const n = Number.parseInt(String(value || ''), 10);
   if (Number.isNaN(n)) return fallback;
   return n;
+}
+
+function isTruthyFlag(value) {
+  const text = String(value || '')
+    .trim()
+    .toLowerCase();
+  return text === '1' || text === 'true' || text === 'on' || text === 'yes';
 }
 
 function isPlainObject(value) {

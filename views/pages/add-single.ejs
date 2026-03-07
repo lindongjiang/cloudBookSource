@@ -35,6 +35,10 @@
             <div class="layui-field-box">
               <input type="checkbox" name="tu" title="漫画" lay-skin="primary" />
               <input type="checkbox" name="shengyin" title="有声" lay-skin="primary" />
+              <input type="checkbox" name="split_publish" title="合集拆分为多条批量发布" lay-skin="primary" />
+              <div class="layui-font-12 layui-font-gray" style="margin-top: 8px;">
+                勾选后：当上传 JSON/XBS 中包含多个书源时，会自动拆成多条记录一次性发布。
+              </div>
             </div>
           </fieldset>
         </div>
@@ -89,7 +93,7 @@
       const params = new URLSearchParams();
       fd.forEach(function (value, key) {
         if (key === 'file') return;
-        if (key === 'tu' || key === 'shengyin') {
+        if (key === 'tu' || key === 'shengyin' || key === 'split_publish') {
           params.set(key, '1');
           return;
         }

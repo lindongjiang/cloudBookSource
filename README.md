@@ -4,7 +4,7 @@
 
 - 模块：`shuyuan / shuyuans / install / activation`
 - 路由风格：`/yuedu/.../*.html`
-- 功能：GitHub OAuth 登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、批量短链、一键导入、MT助手安装教程、卡密购买入口、`iOS/安卓` 一键模式切换
+- 功能：GitHub OAuth 登录、自主发布书源、支持上传 `json/xbs`、自动 `xbs→json` 转换、详情页 `json/xbs` 下载、单文件多书源拆分批量发布、批量短链、一键导入、MT助手安装教程、卡密购买入口、`iOS/安卓` 一键模式切换
 - 书源提交优化：内置香色闺阁（iOS）兼容校验，自动补齐 `sourceType/weight/lastModifyTime`，并修正常见 `.//` XPath 兼容问题
 
 ## 环境要求
