@@ -1529,7 +1529,7 @@ function normalizePayloadByType(type, payload) {
 }
 
 function normalizeXiangseShuyuanPayload(payload) {
-  const list = Array.isArray(payload) ? payload : [payload];
+  const list = extractSourceListFromPayload(payload);
   if (list.length < 1) {
     return {
       ok: false,
@@ -1632,9 +1632,55 @@ function normalizeXiangseShuyuanPayload(payload) {
 
   return {
     ok: true,
-    payload: Array.isArray(payload) ? normalizedList : normalizedList[0],
+    payload: normalizedList.length === 1 ? normalizedList[0] : normalizedList,
     successMessage: buildSuccessMessage(warnings),
   };
+}
+
+function extractSourceListFromPayload(payload) {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (!isPlainObject(payload)) {
+    return [payload];
+  }
+
+  const containerKeys = ['bookSources', 'sources', 'sourceList', 'items', 'list', 'data'];
+  for (const key of containerKeys) {
+    const value = payload[key];
+    if (Array.isArray(value)) {
+      return value;
+    }
+  }
+
+  if (isLikelySourceObject(payload)) {
+    return [payload];
+  }
+
+  const values = [];
+  for (const [mapKey, mapValue] of Object.entries(payload)) {
+    if (!isPlainObject(mapValue)) continue;
+    const row = { ...mapValue };
+    if (!firstNonEmptyString(row.sourceName, row.bookSourceName, row.title, row.name)) {
+      row.sourceName = clipText(String(mapKey || '').trim(), 512);
+    }
+    values.push(row);
+  }
+
+  if (values.length > 0) {
+    return values;
+  }
+
+  return [payload];
+}
+
+function isLikelySourceObject(value) {
+  if (!isPlainObject(value)) return false;
+  if (firstNonEmptyString(value.sourceName, value.bookSourceName, value.title, value.name)) return true;
+
+  const sourceActionKeys = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
+  return sourceActionKeys.some((key) => isPlainObject(value[key]));
 }
 
 function normalizeSourceType(sourceType, bookSourceType, rowNo, warnings) {
