@@ -50,6 +50,7 @@ INSTALL_SHOT_1=/static/images/install/shot-1-mt.jpg
 INSTALL_SHOT_2=/static/images/install/shot-2-store.jpg
 INSTALL_SHOT_3=/static/images/install/shot-3-done.jpg
 PYTHON_BIN=python3
+GO_BIN=/usr/local/btgo/bin/go
 XBS_TOOL_PATH=./tools/scripts/xbs_tool.py
 XBSREBUILD_ROOT=./xbsrebuild
 
@@ -92,7 +93,7 @@ npm run seed
 - 上传 `.xbs` 文件时会在服务端自动执行 `xbs2json`，再进入规则校验与发布流程。
 - 详情页支持下载 `.xbs`（服务端 `json2xbs` 动态生成）。
 - 项目已内置 `tools/scripts/xbs_tool.py` 与 `xbsrebuild` 源码，默认即可运行。
-- 若部署环境路径不同，可修改 `.env` 的 `XBS_TOOL_PATH` 与 `XBSREBUILD_ROOT`。
+- 若部署环境路径不同，可修改 `.env` 的 `GO_BIN`、`XBS_TOOL_PATH` 与 `XBSREBUILD_ROOT`。
 - 运行转换时需要可用的 `python3` 与 `go`（或安装 `xbsrebuild` 可执行文件到 PATH）。
 
 ## 主要路由

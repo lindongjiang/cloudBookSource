@@ -25,6 +25,41 @@ def _default_xbsrebuild_root(repo_root: Path) -> Path | None:
     return None
 
 
+def _resolve_go_binary() -> str:
+    env_go = os.environ.get("GO_BIN", "").strip()
+    candidates = [
+        env_go,
+        shutil.which("go") or "",
+        "/usr/local/btgo/bin/go",
+        "/usr/local/go/bin/go",
+        "/usr/bin/go",
+        "/bin/go",
+    ]
+
+    tested: list[str] = []
+    for item in candidates:
+        raw = str(item or "").strip()
+        if not raw:
+            continue
+
+        if raw in tested:
+            continue
+        tested.append(raw)
+
+        # PATH command name (e.g. "go")
+        if "/" not in raw and shutil.which(raw):
+            return raw
+
+        # absolute path
+        if Path(raw).exists():
+            return raw
+
+    raise RuntimeError(
+        "go command not found. Install Go, or set GO_BIN/XBSREBUILD_BIN. "
+        f"Tried: {', '.join(tested)}"
+    )
+
+
 def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None]:
     # 1) explicit binary path from env
     env_bin = os.environ.get("XBSREBUILD_BIN", "").strip()
@@ -51,12 +86,9 @@ def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None]:
             "Cannot find xbsrebuild. Set XBSREBUILD_BIN or XBSREBUILD_ROOT, or install xbsrebuild in PATH."
         )
 
-    if not shutil.which("go"):
-        raise RuntimeError(
-            "go command not found. Install Go or set XBSREBUILD_BIN to a prebuilt xbsrebuild executable."
-        )
+    go_bin = _resolve_go_binary()
 
-    return ["go", "run", "."], root
+    return [go_bin, "run", "."], root
 
 
 def _prepare_cache_root(repo_root: Path) -> Path:
@@ -137,6 +169,7 @@ def _command_doctor(_: argparse.Namespace) -> None:
     print(f"repo_root: {repo_root}")
     print(f"python: {sys.executable}")
     print(f"go_in_path: {shutil.which('go') or ''}")
+    print(f"GO_BIN: {os.environ.get('GO_BIN', '')}")
     print(f"xbsrebuild_in_path: {shutil.which('xbsrebuild') or ''}")
     print(f"XBSREBUILD_BIN: {os.environ.get('XBSREBUILD_BIN', '')}")
     print(f"XBSREBUILD_ROOT: {os.environ.get('XBSREBUILD_ROOT', '')}")
