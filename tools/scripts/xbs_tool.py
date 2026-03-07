@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -58,6 +59,31 @@ def _resolve_runner(repo_root: Path) -> tuple[list[str], Path | None]:
     return ["go", "run", "."], root
 
 
+def _prepare_cache_root(repo_root: Path) -> Path:
+    candidates: list[Path] = []
+
+    env_cache_root = os.environ.get("XBS_TOOL_CACHE_ROOT", "").strip()
+    if env_cache_root:
+        candidates.append(Path(env_cache_root).expanduser().resolve())
+
+    candidates.append(repo_root / ".cache")
+    candidates.append(Path(tempfile.gettempdir()) / "cloudBookSource-xbs-cache")
+
+    last_error: Exception | None = None
+    for base in candidates:
+        try:
+            base.mkdir(parents=True, exist_ok=True)
+            test_file = base / ".write_test"
+            test_file.write_text("ok", encoding="utf-8")
+            test_file.unlink(missing_ok=True)
+            return base
+        except Exception as exc:
+            last_error = exc
+            continue
+
+    raise RuntimeError(f"Cannot prepare cache directory: {last_error}")
+
+
 def _run_xbsrebuild(action: str, input_path: Path, output_path: Path) -> None:
     repo_root = _repo_root()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +92,7 @@ def _run_xbsrebuild(action: str, input_path: Path, output_path: Path) -> None:
     cmd = cmd_prefix + [action, "-i", str(input_path), "-o", str(output_path)]
 
     env = os.environ.copy()
-    cache_root = repo_root / ".cache"
+    cache_root = _prepare_cache_root(repo_root)
     gocache = cache_root / "gocache"
     gomodcache = cache_root / "gomodcache"
     gocache.mkdir(parents=True, exist_ok=True)
