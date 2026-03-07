@@ -1195,6 +1195,12 @@ function shouldPreserveUploadedXbs(file, convertedFromXbs, splitPublish, batchSi
   return ext === '.xbs';
 }
 
+function isUploadedXbs(file, convertedFromXbs) {
+  if (!file || !convertedFromXbs) return false;
+  const ext = path.extname(String(file.originalname || file.path || '')).toLowerCase();
+  return ext === '.xbs';
+}
+
 function buildListQuery(cfg, queryParams, options = {}) {
   const where = ['type = ?', 'is_deleted = 0'];
   const params = [cfg.key];
@@ -1407,11 +1413,18 @@ async function handleFileAdd(req, res, cfg) {
   }
 
   parsed = normalizedResult.payload;
-  fs.writeFileSync(req.file.path, JSON.stringify(parsed, null, 2), 'utf8');
+  const uploadedIsXbs = isUploadedXbs(req.file, convertedFromXbs);
+  const parsedJsonText = JSON.stringify(parsed, null, 2);
+  if (!uploadedIsXbs) {
+    fs.writeFileSync(req.file.path, parsedJsonText, 'utf8');
+  }
 
   const sourceCount = Array.isArray(parsed) ? parsed.length : 1;
   const contentHtml = clipText(String(req.body.content || '').trim(), 30000);
   const now = Date.now();
+  const relFilePath = path.relative(ROOT, req.file.path).replace(/\\/g, '/');
+  const fileName = clipText(String(req.file.originalname || path.basename(req.file.path)), 512);
+  const codeText = uploadedIsXbs ? parsedJsonText : null;
 
   const result = await query(
     `insert into entries(
@@ -1419,16 +1432,17 @@ async function handleFileAdd(req, res, cfg) {
       ver, has_faxian, has_sousuo, has_tu, has_shengyin,
       source_count, download_count, author_uid, author_name,
       file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, '', null, ?, null, 0, 0, 0, 0, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
+    ) values(?, ?, '', ?, ?, null, 0, 0, 0, 0, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
     [
       cfg.key,
       title,
+      codeText,
       contentHtml,
       sourceCount,
       req.session.user.uid,
       req.session.user.displayName,
-      path.relative(ROOT, req.file.path).replace(/\\/g, '/'),
-      req.file.originalname,
+      relFilePath,
+      fileName,
       now,
       now,
     ]
