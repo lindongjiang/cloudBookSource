@@ -61,6 +61,8 @@ const ANDROID_XIU2_URL =
   process.env.ANDROID_XIU2_URL || 'https://yuedu.xiu2.xyz';
 const ANDROID_SOURCE_HUB_URL =
   process.env.ANDROID_SOURCE_HUB_URL || 'https://legado.aoaostar.com/';
+const ANDROID_AI_BOOKSOURCE_URL =
+  process.env.ANDROID_AI_BOOKSOURCE_URL || 'https://github.com/mctiantian2501314/legadoSkill';
 const SITE_MODE_DEFAULT = process.env.SITE_MODE_DEFAULT || 'ios';
 const MT_WINDOWS_QR_URL =
   process.env.MT_WINDOWS_QR_URL || '/static/images/install/qr-win.png';
@@ -164,6 +166,7 @@ const SITE_MODE_CONFIG = {
     activationNavLabel: '激活码购买',
     topExternalLabel: 'AI 自动写书源',
     topExternalUrl: AI_BOOKSOURCE_URL,
+    aiBookSourceUrl: AI_BOOKSOURCE_URL,
     footerSubtitle: '香色闺阁 iOS 书源站 · Express + MySQL 5.7+',
     homeNoticeLines: [
       '本站专注香色闺阁 iOS 书源，不提供订阅源模块。',
@@ -189,8 +192,9 @@ const SITE_MODE_CONFIG = {
     sourceTypeLabel: '小说',
     installNavLabel: '安卓下载',
     activationNavLabel: '开源地址',
-    topExternalLabel: '阅读 APP 开源地址',
-    topExternalUrl: ANDROID_OPEN_SOURCE_URL,
+    topExternalLabel: '安卓 AI 自动写源',
+    topExternalUrl: ANDROID_AI_BOOKSOURCE_URL,
+    aiBookSourceUrl: ANDROID_AI_BOOKSOURCE_URL,
     footerSubtitle: '开源阅读 Android 书源站 · Express + MySQL 5.7+',
     homeNoticeLines: [
       '自定义书源规则，抓取网页数据，规则清晰并可持续维护。',
@@ -198,6 +202,7 @@ const SITE_MODE_CONFIG = {
       '支持本地 TXT / EPUB 阅读、净化替换、多翻页模式等能力。',
     ],
     homeRelatedLinks: [
+      { label: '安卓 AI 自动写源（GitHub）', url: ANDROID_AI_BOOKSOURCE_URL, external: true, danger: true },
       { label: '阅读APP开源地址', url: ANDROID_OPEN_SOURCE_URL, external: true, danger: true },
       { label: '安卓下载地址', url: '/yuedu/install/index.html' },
       { label: '喵公子 B 站', url: ANDROID_BILIBILI_URL, external: true },
@@ -270,7 +275,7 @@ app.use((req, res, next) => {
       logoUrl: switchMeta.logoUrl,
       href: `/index/site-mode/switch?mode=${switchMeta.key}&redirect=${encodeURIComponent(req.originalUrl)}`,
     },
-    aiBookSourceUrl: AI_BOOKSOURCE_URL,
+    aiBookSourceUrl: baseMeta.aiBookSourceUrl || AI_BOOKSOURCE_URL,
     appInstallUrl: APP_INSTALL_URL,
     activationBuyUrl: ACTIVATION_BUY_URL,
     mtWindowsUrl: MT_WINDOWS_URL,
