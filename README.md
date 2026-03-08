@@ -30,6 +30,7 @@ SITE_GITHUB_URL=https://github.com/lindongjiang/cloudBookSource
 AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
 APP_INSTALL_URL=/yuedu/install/index.html
 ACTIVATION_BUY_URL=https://cloudmantoua.top/81/
+IOS_AUTO_SOURCE_BILIBILI_URL=https://space.bilibili.com/275649236?spm_id_from=333.40164.0.0
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
 GITHUB_OAUTH_CALLBACK_URL=

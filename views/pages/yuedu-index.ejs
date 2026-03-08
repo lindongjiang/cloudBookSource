@@ -25,6 +25,7 @@
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">App 安装教程</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/activation/index.html">激活码购买地址</a>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.iosAutoSourceBilibiliUrl %>">自动话写源(墨点无痕)</a>
           <% } %>
         </div>
       </div>
@@ -70,6 +71,108 @@
       </div>
     </div>
   </div>
+
+  <% if (siteMode === 'ios') { %>
+    <div class="layui-row layui-col-space20" style="margin-top: 2px;">
+      <div class="layui-col-xs12">
+        <div class="layui-panel xi-card">
+          <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">
+            <h3>书源求助面板</h3>
+          </blockquote>
+          <div class="layui-text">
+            <p>遇到缺源、失效源、想看的站点没规则，可以在这里发布求助；会写书源的用户可直接认领并上传解决。</p>
+          </div>
+
+          <% if (!currentUser) { %>
+            <blockquote class="layui-elem-quote layui-font-red" style="margin-top: 10px;">
+              请先登录后发布求助需求。登录后可填写标题和详细说明。
+            </blockquote>
+          <% } %>
+
+          <form class="layui-form layui-form-pane" id="helpRequestForm" style="margin-top: 10px;">
+            <div class="layui-row layui-col-space10">
+              <div class="layui-col-xs12 layui-col-sm4">
+                <input type="text" name="title" maxlength="120" placeholder="求助标题（例如：XX站点香色书源）" class="layui-input" />
+              </div>
+              <div class="layui-col-xs12 layui-col-sm8">
+                <input type="text" name="detail" maxlength="3000" placeholder="求助说明（站点链接、报错情况、期望规则）" class="layui-input" />
+              </div>
+              <div class="layui-col-xs12 layui-col-sm3">
+                <button type="submit" class="layui-btn xi-red-btn layui-btn-fluid">发布求助</button>
+              </div>
+            </div>
+          </form>
+
+          <div style="margin-top: 14px;">
+            <% if (!helpRequests || helpRequests.length < 1) { %>
+              <div class="layui-panel" style="padding: 12px; text-align: center; color: #666;">暂无求助，欢迎发起第一条需求。</div>
+            <% } else { %>
+              <% helpRequests.forEach(function(item){ %>
+                <div class="layui-panel" style="padding: 12px; margin-bottom: 10px; border: 1px solid #f0d4d1;">
+                  <div style="display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <strong><%= item.title %></strong>
+                    <span class="layui-badge <%= item.status === 'open' ? 'layui-bg-orange' : 'layui-bg-green' %>">
+                      <%= item.status === 'open' ? '待解决' : '已解决' %>
+                    </span>
+                  </div>
+                  <p style="margin-top: 8px; color: #555;"><%= item.detail %></p>
+                  <p class="layui-font-12 layui-font-gray" style="margin-top: 6px;">
+                    发布者：<%= item.author_name %>（UID:<%= item.author_uid %>） · <%= item.relativeTime %>
+                  </p>
+                  <div style="margin-top: 8px;">
+                    <% if (item.status === 'open') { %>
+                      <a class="layui-btn layui-btn-sm xi-red-btn" href="/yuedu/shuyuan/add.html?help_request_id=<%= item.id %>">我来解决（上传书源）</a>
+                    <% } else if (item.solved_entry_id) { %>
+                      <a class="layui-btn layui-btn-sm layui-btn-primary" href="/yuedu/shuyuan/content/id/<%= item.solved_entry_id %>.html">查看已上传书源</a>
+                    <% } %>
+                  </div>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var form = document.getElementById('helpRequestForm');
+        if (!form) return;
+        form.addEventListener('submit', async function (event) {
+          event.preventDefault();
+          var fd = new FormData(form);
+          var title = (fd.get('title') || '').toString().trim();
+          var detail = (fd.get('detail') || '').toString().trim();
+          if (!title) {
+            layui.layer.msg('请填写求助标题');
+            return;
+          }
+          if (!detail) {
+            layui.layer.msg('请填写求助说明');
+            return;
+          }
+
+          try {
+            var res = await fetch('/yuedu/help/add.json', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: title, detail: detail }),
+            });
+            var data = await res.json();
+            layui.layer.msg(data.msg || '提交完成');
+            if (data.code === 1) {
+              setTimeout(function () {
+                window.location.reload();
+              }, 450);
+            }
+          } catch (err) {
+            console.error(err);
+            layui.layer.msg('提交失败，请稍后重试');
+          }
+        });
+      })();
+    </script>
+  <% } %>
 </div>
 
 <%- include('../partials/footer') %>

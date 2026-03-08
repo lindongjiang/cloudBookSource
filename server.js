@@ -33,6 +33,9 @@ const APP_INSTALL_URL =
   process.env.APP_INSTALL_URL || 'https://github.com/lindongjiang/xiangseSkill#readme';
 const ACTIVATION_BUY_URL =
   process.env.ACTIVATION_BUY_URL || 'https://github.com/lindongjiang/xiangseSkill';
+const IOS_AUTO_SOURCE_BILIBILI_URL =
+  process.env.IOS_AUTO_SOURCE_BILIBILI_URL ||
+  'https://space.bilibili.com/275649236?spm_id_from=333.40164.0.0';
 const MT_WINDOWS_URL =
   process.env.MT_WINDOWS_URL || 'https://wwbhc.lanzn.com/iwFoH3g1r9da';
 const MT_MACOS_URL =
@@ -280,6 +283,7 @@ app.use((req, res, next) => {
     aiBookSourceUrl: baseMeta.aiBookSourceUrl || AI_BOOKSOURCE_URL,
     appInstallUrl: APP_INSTALL_URL,
     activationBuyUrl: ACTIVATION_BUY_URL,
+    iosAutoSourceBilibiliUrl: IOS_AUTO_SOURCE_BILIBILI_URL,
     mtWindowsUrl: MT_WINDOWS_URL,
     mtMacUrl: MT_MACOS_URL,
     cardBuyUrl: CARD_BUY_URL,
@@ -384,11 +388,17 @@ app.get('/index/site-mode/switch', (req, res) => {
   res.redirect(normalizeRedirectPath(req.query.redirect));
 });
 
-app.get('/yuedu/index/index.html', (req, res) => {
-  res.render('pages/yuedu-index', {
-    pageTitle: `${res.locals.siteMeta.siteName} - 首页`,
-    currentType: 'index',
-  });
+app.get('/yuedu/index/index.html', async (req, res, next) => {
+  try {
+    const helpRequests = await listHelpRequestsForHome(res.locals.siteMode);
+    res.render('pages/yuedu-index', {
+      pageTitle: `${res.locals.siteMeta.siteName} - 首页`,
+      currentType: 'index',
+      helpRequests,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get('/yuedu/tools/index.html', (req, res) => {
@@ -410,6 +420,37 @@ app.get('/yuedu/activation/index.html', (req, res) => {
     pageTitle: `${res.locals.siteMeta.siteName} - ${res.locals.siteMeta.activationNavLabel}`,
     currentType: 'activation',
   });
+});
+
+app.post('/yuedu/help/add.json', requireLoginJson, async (req, res) => {
+  const platform = resolveCurrentPlatform(req);
+  if (platform !== 'ios') {
+    res.json({ code: 0, msg: '当前仅香色模式支持求助面板', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const title = clipText(String(req.body?.title || '').trim(), 120);
+  const detail = clipText(String(req.body?.detail || '').trim(), 3000);
+  if (!title) {
+    res.json({ code: 0, msg: '请输入求助标题', data: '', url: '', wait: 2 });
+    return;
+  }
+  if (!detail) {
+    res.json({ code: 0, msg: '请输入求助说明', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const now = Date.now();
+  await query(
+    `insert into help_requests(
+      platform, title, detail, status,
+      author_uid, author_name, solved_entry_id, solved_by_uid, solved_by_name, solved_at,
+      is_deleted, created_at, updated_at
+    ) values(?, ?, ?, 'open', ?, ?, null, null, null, null, 0, ?, ?)`,
+    [platform, title, detail, req.session.user.uid, req.session.user.displayName, now, now]
+  );
+
+  res.json({ code: 1, msg: '求助已发布，等待书源作者认领解决', data: '', url: '', wait: 1 });
 });
 
 app.get('/index/login/login.html', (req, res) => {
@@ -627,12 +668,23 @@ app.get('/yuedu/:type/add.html', (req, res, next) => {
     return;
   }
 
-  const template = cfg.kind === 'single' ? 'pages/add-single' : 'pages/add-file';
-  res.render(template, {
-    pageTitle: `${res.locals.siteMeta.siteName} - 新建${cfg.label}`,
-    currentType: cfg.key,
-    cfg,
-  });
+  (async () => {
+    const template = cfg.kind === 'single' ? 'pages/add-single' : 'pages/add-file';
+    let helpRequest = null;
+    if (cfg.kind === 'single' && cfg.key === 'shuyuan' && res.locals.siteMode === 'ios') {
+      const helpRequestId = toInt(req.query.help_request_id, 0);
+      if (helpRequestId > 0) {
+        helpRequest = await getOpenHelpRequestById(helpRequestId, 'ios');
+      }
+    }
+
+    res.render(template, {
+      pageTitle: `${res.locals.siteMeta.siteName} - 新建${cfg.label}`,
+      currentType: cfg.key,
+      cfg,
+      helpRequest,
+    });
+  })().catch(next);
 });
 
 app.post('/yuedu/:type/add.html', (req, res, next) => {
@@ -1194,6 +1246,27 @@ async function initDb() {
       unique key uk_short_links_hash (hash)
     ) engine=InnoDB default charset=utf8mb4
   `);
+
+  await query(`
+    create table if not exists help_requests (
+      id bigint unsigned not null auto_increment,
+      platform varchar(16) not null default 'ios',
+      title varchar(120) not null,
+      detail text not null,
+      status varchar(16) not null default 'open',
+      author_uid bigint not null,
+      author_name varchar(191) not null,
+      solved_entry_id bigint null,
+      solved_by_uid bigint null,
+      solved_by_name varchar(191) null,
+      solved_at bigint null,
+      is_deleted tinyint(1) not null default 0,
+      created_at bigint not null,
+      updated_at bigint not null,
+      primary key (id),
+      key idx_help_requests_platform_status_updated (platform, status, updated_at)
+    ) engine=InnoDB default charset=utf8mb4
+  `);
 }
 
 async function ensureUsersOauthColumns() {
@@ -1537,6 +1610,7 @@ function buildListQuery(cfg, queryParams, options = {}) {
 
 async function handleSingleAdd(req, res, cfg) {
   const platform = resolveCurrentPlatform(req);
+  const helpRequestId = toInt(req.body?.help_request_id, 0);
   const rawCode = String(req.body.code || '').trim();
   let parsed;
   let convertedFromXbs = false;
@@ -1606,6 +1680,8 @@ async function handleSingleAdd(req, res, cfg) {
       createdIds.push(result.insertId);
     }
 
+    const solvedHelp = await markHelpRequestSolvedByEntryId(helpRequestId, platform, req.session.user, createdIds[0]);
+
     cleanupUploadedFile(req.file);
 
     const msgPrefix = convertedFromXbs
@@ -1614,7 +1690,7 @@ async function handleSingleAdd(req, res, cfg) {
 
     res.json({
       code: 1,
-      msg: `${msgPrefix}，已拆分批量发布 ${createdIds.length} 条`,
+      msg: `${msgPrefix}，已拆分批量发布 ${createdIds.length} 条${solvedHelp ? '，并已标记对应求助已解决' : ''}`,
       data: '',
       url: `/yuedu/${cfg.key}/index.html`,
       wait: 1,
@@ -1650,6 +1726,7 @@ async function handleSingleAdd(req, res, cfg) {
     row.file_name = clipText(String(req.file.originalname || path.basename(req.file.path)), 512);
   }
   const result = await insertSingleEntry(row);
+  const solvedHelp = await markHelpRequestSolvedByEntryId(helpRequestId, platform, req.session.user, result.insertId);
 
   if (!preserveUploadedXbs) {
     cleanupUploadedFile(req.file);
@@ -1657,9 +1734,10 @@ async function handleSingleAdd(req, res, cfg) {
 
   res.json({
     code: 1,
-    msg: convertedFromXbs
-      ? `${normalizedResult.successMessage}（已自动将 XBS 转为 JSON）`
-      : normalizedResult.successMessage,
+    msg:
+      (convertedFromXbs
+        ? `${normalizedResult.successMessage}（已自动将 XBS 转为 JSON）`
+        : normalizedResult.successMessage) + (solvedHelp ? '，并已标记对应求助已解决' : ''),
     data: '',
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
@@ -1749,6 +1827,103 @@ async function handleFileAdd(req, res, cfg) {
     url: `/yuedu/${cfg.key}/content/id/${result.insertId}.html`,
     wait: 1,
   });
+}
+
+async function listHelpRequestsForHome(platform) {
+  const mode = resolveSiteMode(platform);
+  if (mode !== 'ios') {
+    return [];
+  }
+
+  const rows = await query(
+    `select h.id, h.title, h.detail, h.status, h.author_uid, h.author_name, h.solved_entry_id, h.solved_at, h.created_at, h.updated_at,
+            e.title as solved_entry_title
+       from help_requests h
+  left join entries e
+         on e.id = h.solved_entry_id
+        and e.type = 'shuyuan'
+        and e.platform = h.platform
+        and e.is_deleted = 0
+      where h.platform = ?
+        and h.is_deleted = 0
+   order by case when h.status = 'open' then 0 else 1 end asc, h.updated_at desc
+      limit 30`,
+    [mode]
+  );
+
+  return rows.map((row) => ({
+    ...row,
+    relativeTime: formatRelativeTime(row.updated_at),
+  }));
+}
+
+async function getOpenHelpRequestById(id, platform) {
+  const requestId = toInt(id, 0);
+  if (!(requestId > 0)) return null;
+  const mode = resolveSiteMode(platform);
+  const rows = await query(
+    `select id, title, detail, status, author_uid, author_name, created_at, updated_at
+       from help_requests
+      where id = ?
+        and platform = ?
+        and status = 'open'
+        and is_deleted = 0
+      limit 1`,
+    [requestId, mode]
+  );
+  return rows[0] || null;
+}
+
+async function markHelpRequestSolvedByEntryId(helpRequestId, platform, solverUser, solvedEntryId) {
+  const requestId = toInt(helpRequestId, 0);
+  const entryId = toInt(solvedEntryId, 0);
+  if (!(requestId > 0) || !(entryId > 0)) {
+    return false;
+  }
+
+  const mode = resolveSiteMode(platform);
+  if (mode !== 'ios') {
+    return false;
+  }
+
+  const rows = await query(
+    `select id, status
+       from help_requests
+      where id = ?
+        and platform = ?
+        and is_deleted = 0
+      limit 1`,
+    [requestId, mode]
+  );
+  const item = rows[0];
+  if (!item || String(item.status) !== 'open') {
+    return false;
+  }
+
+  const now = Date.now();
+  await query(
+    `update help_requests
+        set status = 'solved',
+            solved_entry_id = ?,
+            solved_by_uid = ?,
+            solved_by_name = ?,
+            solved_at = ?,
+            updated_at = ?
+      where id = ?
+        and platform = ?
+        and status = 'open'
+        and is_deleted = 0`,
+    [
+      entryId,
+      Number(solverUser?.uid || 0),
+      clipText(String(solverUser?.displayName || ''), 191),
+      now,
+      now,
+      requestId,
+      mode,
+    ]
+  );
+  return true;
 }
 
 async function allocateNextUid() {
