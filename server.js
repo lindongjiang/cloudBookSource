@@ -258,6 +258,7 @@ app.use((req, res, next) => {
   res.locals.typeConfigMap = TYPE_CONFIG;
   res.locals.pageLabelMap = {
     index: '首页',
+    tools: '工具',
     install: baseMeta.installNavLabel,
     activation: baseMeta.activationNavLabel,
     shuyuan: TYPE_CONFIG.shuyuan.label,
@@ -329,6 +330,13 @@ app.get('/yuedu/index/index.html', (req, res) => {
   res.render('pages/yuedu-index', {
     pageTitle: `${res.locals.siteMeta.siteName} - 首页`,
     currentType: 'index',
+  });
+});
+
+app.get('/yuedu/tools/index.html', (req, res) => {
+  res.render('pages/tools-index', {
+    pageTitle: `${res.locals.siteMeta.siteName} - 工具`,
+    currentType: 'tools',
   });
 });
 
@@ -1444,7 +1452,7 @@ async function handleSingleAdd(req, res, cfg) {
     return;
   }
 
-  const normalizedResult = normalizePayloadByType(cfg.key, parsed);
+  const normalizedResult = normalizePayloadByType(cfg.key, parsed, platform);
   if (!normalizedResult.ok) {
     cleanupUploadedFile(req.file);
     res.json({ code: 0, msg: normalizedResult.errorMessage, data: '', url: '', wait: 2 });
@@ -1578,7 +1586,7 @@ async function handleFileAdd(req, res, cfg) {
     return;
   }
 
-  const normalizedResult = normalizePayloadByType(cfg.key, parsed);
+  const normalizedResult = normalizePayloadByType(cfg.key, parsed, platform);
   if (!normalizedResult.ok) {
     cleanupUploadedFile(req.file);
     res.json({ code: 0, msg: normalizedResult.errorMessage, data: '', url: '', wait: 2 });
@@ -1875,8 +1883,11 @@ function cleanupTempFiles(files) {
   }
 }
 
-function normalizePayloadByType(type, payload) {
+function normalizePayloadByType(type, payload, platform) {
   if (type === 'shuyuan' || type === 'shuyuans') {
+    if (resolveSiteMode(platform) === 'android') {
+      return normalizeAndroidShuyuanPayload(payload);
+    }
     return normalizeXiangseShuyuanPayload(payload);
   }
 
@@ -1884,6 +1895,97 @@ function normalizePayloadByType(type, payload) {
     ok: true,
     payload,
     successMessage: '提交成功',
+  };
+}
+
+function normalizeAndroidShuyuanPayload(payload) {
+  const list = extractSourceListFromPayload(payload);
+  if (list.length < 1) {
+    return {
+      ok: false,
+      errorMessage: '书源校验失败: 至少包含 1 条书源数据',
+    };
+  }
+
+  const normalizedList = [];
+  const errors = [];
+  const warnings = [];
+
+  list.forEach((item, idx) => {
+    const rowNo = idx + 1;
+    if (!isPlainObject(item)) {
+      errors.push(`第${rowNo}条不是对象`);
+      return;
+    }
+
+    const normalized = { ...item };
+
+    const sourceName = firstNonEmptyString(
+      normalized.bookSourceName,
+      normalized.sourceName,
+      normalized.title,
+      normalized.name
+    );
+    if (!sourceName) {
+      errors.push(`第${rowNo}条缺少 bookSourceName`);
+      return;
+    }
+    normalized.bookSourceName = sourceName;
+    if (!firstNonEmptyString(normalized.sourceName)) {
+      normalized.sourceName = sourceName;
+      warnings.push(`第${rowNo}条已补充 sourceName`);
+    }
+
+    const sourceUrl = firstNonEmptyString(
+      normalized.bookSourceUrl,
+      normalized.sourceUrl,
+      normalized.url,
+      normalized.host
+    );
+    if (!sourceUrl) {
+      errors.push(`第${rowNo}条缺少 bookSourceUrl`);
+      return;
+    }
+    normalized.bookSourceUrl = sourceUrl;
+    if (!firstNonEmptyString(normalized.sourceUrl)) {
+      normalized.sourceUrl = sourceUrl;
+      warnings.push(`第${rowNo}条已补充 sourceUrl`);
+    }
+
+    if (typeof normalized.enabled !== 'boolean') {
+      normalized.enabled = true;
+      warnings.push(`第${rowNo}条已补充 enabled=true`);
+    }
+
+    if (typeof normalized.enabledExplore !== 'boolean') {
+      const hasExplore =
+        firstNonEmptyString(normalized.exploreUrl).length > 0 ||
+        (Array.isArray(normalized.ruleExplore) && normalized.ruleExplore.length > 0);
+      normalized.enabledExplore = hasExplore;
+      warnings.push(`第${rowNo}条已补充 enabledExplore=${hasExplore ? 'true' : 'false'}`);
+    }
+
+    if (!Number.isFinite(Number(normalized.bookSourceType))) {
+      normalized.bookSourceType = 0;
+      warnings.push(`第${rowNo}条已补充 bookSourceType=0`);
+    } else {
+      normalized.bookSourceType = Number(normalized.bookSourceType);
+    }
+
+    normalizedList.push(normalized);
+  });
+
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      errorMessage: `书源校验失败: ${errors.slice(0, 5).join('；')}`,
+    };
+  }
+
+  return {
+    ok: true,
+    payload: normalizedList.length === 1 ? normalizedList[0] : normalizedList,
+    successMessage: buildAndroidSuccessMessage(warnings),
   };
 }
 
@@ -2043,7 +2145,10 @@ function isLikelySourceObject(value) {
   if (firstNonEmptyString(value.sourceName, value.bookSourceName, value.title, value.name)) return true;
 
   const sourceActionKeys = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
-  return sourceActionKeys.some((key) => isPlainObject(value[key]));
+  if (sourceActionKeys.some((key) => isPlainObject(value[key]))) return true;
+
+  const androidRuleKeys = ['ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent'];
+  return androidRuleKeys.some((key) => isPlainObject(value[key]));
 }
 
 function normalizeSourceType(sourceType, bookSourceType, rowNo, warnings) {
@@ -2131,6 +2236,13 @@ function buildSuccessMessage(warnings) {
     return '提交成功';
   }
   return `提交成功，已自动优化 ${warnings.length} 处香色兼容字段`;
+}
+
+function buildAndroidSuccessMessage(warnings) {
+  if (!warnings || warnings.length < 1) {
+    return '提交成功';
+  }
+  return `提交成功，已自动兼容安卓书源字段 ${warnings.length} 处`;
 }
 
 function isValidRequestInfo(requestInfo) {

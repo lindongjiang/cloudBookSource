@@ -589,3 +589,261 @@ body.mode-android .xi-card {
     padding-right: 96px;
   }
 }
+
+.tool-hero {
+  padding: 18px 18px 16px;
+}
+
+.tool-hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #171717;
+}
+
+.tool-hero-desc {
+  margin-top: 8px;
+  color: #5f6368;
+  line-height: 1.75;
+}
+
+.tool-search-wrap {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #f2b5ae;
+  border-radius: 12px;
+  padding: 0 14px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+body.mode-android .tool-search-wrap {
+  border-color: #b6cdf0;
+}
+
+.tool-search-wrap .layui-icon {
+  color: var(--brand-red);
+  font-size: 18px;
+}
+
+.tool-search-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: #222;
+}
+
+.tool-category-tabs {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-category-chip {
+  border: 1px solid #f3b9b3;
+  background: #fff;
+  color: #4f4f4f;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+body.mode-android .tool-category-chip {
+  border-color: #c4d8f6;
+}
+
+.tool-category-chip.active {
+  background: var(--brand-red);
+  border-color: var(--brand-red);
+  color: #fff;
+}
+
+.tool-no-result {
+  border: 1px dashed #f1c5bf;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+  color: #666;
+  text-align: center;
+  background: #fffaf9;
+}
+
+body.mode-android .tool-no-result {
+  border-color: #cedffc;
+  background: #f6faff;
+}
+
+.tool-section {
+  margin-bottom: 18px;
+}
+
+.tool-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tool-section-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pdf-tool-card {
+  border: 1px solid #f3d2cd;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0, #fff9f8 100%);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 164px;
+}
+
+body.mode-android .pdf-tool-card {
+  border-color: #d4e3fb;
+  background: linear-gradient(180deg, #ffffff 0, #f6faff 100%);
+}
+
+.pdf-tool-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.pdf-tool-card-desc {
+  margin-top: 8px;
+  color: #666;
+  line-height: 1.7;
+  flex: 1;
+}
+
+.pdf-tool-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-status-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tool-status-badge.is-upcoming {
+  background: #fff1ee;
+  color: #d82f26;
+}
+
+.tool-status-badge.is-planned {
+  background: #f2f4f7;
+  color: #556070;
+}
+
+.tool-status-badge.is-recommended {
+  background: #fff1ee;
+  color: #d82f26;
+}
+
+.tool-status-badge.is-enterprise {
+  background: #ebf2ff;
+  color: #2e5ea6;
+}
+
+body.mode-android .tool-status-badge.is-upcoming,
+body.mode-android .tool-status-badge.is-recommended {
+  background: #edf4ff;
+  color: #22529a;
+}
+
+.pdf-tool-card-footer {
+  margin-top: 10px;
+}
+
+.strategy-panel {
+  padding: 12px 14px 16px;
+}
+
+.strategy-title {
+  margin: 0 0 12px;
+}
+
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.strategy-card {
+  border: 1px solid #f1d3ce;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+}
+
+body.mode-android .strategy-card {
+  border-color: #d5e2f8;
+}
+
+.strategy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.strategy-head h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #202124;
+}
+
+.strategy-card p {
+  color: #666;
+  line-height: 1.8;
+}
+
+.strategy-roadmap {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff8f7;
+  color: #444;
+}
+
+body.mode-android .strategy-roadmap {
+  background: #f3f8ff;
+}
+
+@media screen and (max-width: 900px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .strategy-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-hero-title {
+    font-size: 24px;
+  }
+}

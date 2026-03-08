@@ -1,0 +1,153 @@
+<%- include('../partials/header', { pageTitle, currentType }) %>
+
+<%
+const toolGroups = [
+  {
+    key: 'common',
+    title: '经常使用的',
+    tools: [
+      { name: 'PDF合并', desc: '将多个 PDF 合并为一个文件，便于统一分发。', status: '即将上线' },
+      { name: 'PDF拆分', desc: '按页码或范围拆分 PDF，快速得到多个子文件。', status: '规划中' },
+      { name: 'PDF压缩', desc: '压缩 PDF 体积并平衡清晰度与下载速度。', status: '即将上线' },
+      { name: 'PDF编辑', desc: '基础文字与页面编辑能力，覆盖常见修改场景。', status: '规划中' },
+      { name: 'PDF签署', desc: '在线签名与签章流程，支持标准化文档签署。', status: '规划中' },
+    ],
+  },
+  {
+    key: 'to-pdf',
+    title: '转换为PDF',
+    tools: [
+      { name: 'Word转PDF', desc: '将 Word 文档转换为 PDF，保持阅读一致性。', status: '即将上线' },
+      { name: 'Excel转PDF', desc: '将 Excel 表格转为 PDF，便于打印与分享。', status: '规划中' },
+      { name: 'PPT转PDF', desc: '将演示文稿转为 PDF，稳定跨平台展示效果。', status: '规划中' },
+      { name: '图片转PDF', desc: '将 JPG/PNG 等图片批量合并为 PDF 文件。', status: '即将上线' },
+    ],
+  },
+  {
+    key: 'from-pdf',
+    title: '从PDF转换',
+    tools: [
+      { name: 'PDF转Word', desc: '将 PDF 转为可编辑 Word，优先保证内容可改。', status: '即将上线' },
+      { name: 'PDF转Excel', desc: '将表格型 PDF 提取为 Excel，便于二次计算。', status: '规划中' },
+      { name: 'PDF转PPT', desc: '将演示型 PDF 转为 PPT，减少重做成本。', status: '规划中' },
+      { name: 'PDF转图像', desc: '将 PDF 页面导出为图片，用于预览与分享。', status: '即将上线' },
+    ],
+  },
+  {
+    key: 'image',
+    title: '转换图像',
+    tools: [
+      { name: 'HEIC转JPG', desc: '将 iPhone 照片格式 HEIC 转为通用 JPG。', status: '即将上线' },
+      { name: 'WEBP转PNG', desc: '将 WEBP 转为 PNG，适配更多设计场景。', status: '规划中' },
+    ],
+  },
+];
+%>
+
+<div class="layui-container">
+  <div class="layui-row layui-col-space20 m-top">
+    <div class="layui-col-xs12">
+      <div class="layui-panel xi-card tool-hero">
+        <div class="tool-hero-title">PDF 工具中心</div>
+        <p class="tool-hero-desc">
+          对标 PDF24 的信息架构，先上线工具入口、分类与搜索交互。当前版本为产品可视化阶段，不直接执行文件转换。
+        </p>
+        <div class="tool-search-wrap">
+          <i class="layui-icon layui-icon-search"></i>
+          <input
+            id="toolSearchInput"
+            class="tool-search-input"
+            type="text"
+            placeholder="搜索工具：例如 PDF转Word / 压缩 / 图片转PDF"
+          />
+        </div>
+        <div id="toolCategoryTabs" class="tool-category-tabs">
+          <button class="tool-category-chip active" data-filter="all" type="button">全部</button>
+          <% toolGroups.forEach(function(group){ %>
+            <button class="tool-category-chip" data-filter="<%= group.key %>" type="button"><%= group.title %></button>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-xs12">
+      <div class="layui-panel card-content">
+        <div id="toolNoResult" class="tool-no-result" style="display: none;">
+          未找到匹配工具，请尝试更短关键词或切换分类。
+        </div>
+
+        <div id="toolSections">
+          <% toolGroups.forEach(function(group){ %>
+            <section class="tool-section" data-group="<%= group.key %>">
+              <div class="tool-section-header">
+                <h3><%= group.title %></h3>
+                <span class="layui-badge-rim"><%= group.tools.length %> 项</span>
+              </div>
+              <div class="tool-grid">
+                <% group.tools.forEach(function(tool){ %>
+                  <article
+                    class="pdf-tool-card"
+                    data-group="<%= group.key %>"
+                    data-name="<%= tool.name.toLowerCase() %>"
+                    data-desc="<%= tool.desc.toLowerCase() %>"
+                    data-keywords="<%= `${group.title} ${tool.name} ${tool.desc}`.toLowerCase() %>">
+                    <div class="pdf-tool-card-title"><%= tool.name %></div>
+                    <p class="pdf-tool-card-desc"><%= tool.desc %></p>
+                    <div class="pdf-tool-card-meta">
+                      <span class="layui-badge-rim"><%= group.title %></span>
+                      <span class="tool-status-badge <%= tool.status === '即将上线' ? 'is-upcoming' : 'is-planned' %>">
+                        <%= tool.status %>
+                      </span>
+                    </div>
+                    <div class="pdf-tool-card-footer">
+                      <a class="layui-btn layui-btn-sm xi-red-btn" href="#build-strategy">查看方案</a>
+                    </div>
+                  </article>
+                <% }) %>
+              </div>
+            </section>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-xs12" id="build-strategy">
+      <div class="layui-panel xi-card strategy-panel">
+        <blockquote class="layui-elem-quote strategy-title">
+          <h3>高级自研方式（长期大站）</h3>
+        </blockquote>
+        <div class="strategy-grid">
+          <article class="strategy-card">
+            <div class="strategy-head">
+              <h4>pdf2docx（Python 开源）</h4>
+              <span class="tool-status-badge is-recommended">推荐路线</span>
+            </div>
+            <p>安装方式：<code>pip install pdf2docx</code>。本地转换准确率较好，适合快速部署服务器 API。</p>
+          </article>
+
+          <article class="strategy-card">
+            <div class="strategy-head">
+              <h4>Pandoc</h4>
+              <span class="tool-status-badge is-planned">兼容兜底</span>
+            </div>
+            <p>通用文档转换能力强，支持 PDF→DOCX，但复杂版式保真度通常低于专业转换引擎。</p>
+          </article>
+
+          <article class="strategy-card">
+            <div class="strategy-head">
+              <h4>Nutrient / Apryse SDK</h4>
+              <span class="tool-status-badge is-enterprise">企业版可选</span>
+            </div>
+            <p>高保真商业方案，支持浏览器端或服务端集成，适合对质量和规模都有要求的场景。</p>
+          </article>
+        </div>
+
+        <div class="strategy-roadmap">
+          <p><strong>路线建议：</strong>v1 先用 <code>pdf2docx</code>，v2 评估 <code>Pandoc</code> 作为兜底，v3 在预算允许时接入商用 SDK 提升保真和稳定性。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

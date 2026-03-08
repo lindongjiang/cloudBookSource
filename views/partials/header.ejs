@@ -26,6 +26,7 @@
         <div class="nav">
           <ul class="layui-nav menunav">
             <li class="layui-nav-item <%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
+            <li class="layui-nav-item <%= currentType === 'tools' ? 'layui-this' : '' %>"><a href="/yuedu/tools/index.html">工具</a></li>
             <li class="layui-nav-item <%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html"><%= siteMeta.installNavLabel %></a></li>
             <li class="layui-nav-item <%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html"><%= siteMeta.activationNavLabel %></a></li>
             <li class="layui-nav-item"><a target="_blank" href="<%= siteMeta.topExternalUrl %>"><%= siteMeta.topExternalLabel %></a></li>
@@ -63,6 +64,7 @@
           <div class="layui-tab layui-tab-brief" style="margin: 0;">
             <ul class="layui-tab-title" id="navsub" style="text-align: center; height: auto !important; white-space: normal !important;">
               <li class="<%= currentType === 'index' ? 'layui-this' : '' %>"><a href="/yuedu/index/index.html">首页</a></li>
+              <li class="<%= currentType === 'tools' ? 'layui-this' : '' %>"><a href="/yuedu/tools/index.html">工具</a></li>
               <li class="<%= currentType === 'shuyuan' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuan/index.html">书源</a></li>
               <li class="<%= currentType === 'shuyuans' ? 'layui-this' : '' %>"><a href="/yuedu/shuyuans/index.html">书源合集</a></li>
               <li class="<%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html"><%= siteMeta.installNavLabel %></a></li>
