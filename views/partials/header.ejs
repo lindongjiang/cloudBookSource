@@ -3,11 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <title><%= pageTitle %></title>
+    <title><%= (seo && seo.title) ? seo.title : pageTitle %></title>
+    <% if (seo && seo.description) { %><meta name="description" content="<%= seo.description %>" /><% } %>
+    <% if (seo && seo.keywords) { %><meta name="keywords" content="<%= seo.keywords %>" /><% } %>
+    <% if (seo && seo.robots) { %><meta name="robots" content="<%= seo.robots %>" /><% } %>
+    <% if (seo && seo.canonical) { %><link rel="canonical" href="<%= seo.canonical %>" /><% } %>
+    <% if (seo && seo.title) { %><meta property="og:title" content="<%= seo.title %>" /><% } %>
+    <% if (seo && seo.description) { %><meta property="og:description" content="<%= seo.description %>" /><% } %>
+    <% if (seo && seo.ogType) { %><meta property="og:type" content="<%= seo.ogType %>" /><% } %>
+    <% if (seo && seo.canonical) { %><meta property="og:url" content="<%= seo.canonical %>" /><% } %>
+    <% if (seo && seo.ogImage) { %><meta property="og:image" content="<%= seo.ogImage %>" /><% } %>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/layui@2.9.22/dist/css/layui.css" />
     <link rel="stylesheet" href="/static/css/common.css?v=2" />
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/layui@2.9.22/dist/layui.min.js"></script>
+    <% if (seo && seo.jsonLd) { %>
+      <script type="application/ld+json"><%- JSON.stringify(seo.jsonLd) %></script>
+    <% } %>
   </head>
   <body class="mode-<%= siteMode %>">
     <div class="header">

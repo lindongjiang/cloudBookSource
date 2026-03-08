@@ -24,6 +24,7 @@ cp .env.example .env
 
 ```env
 SITE_NAME=香色源
+SITE_URL=https://your-domain.com
 SITE_MODE_DEFAULT=ios
 SITE_GITHUB_URL=https://github.com/lindongjiang/cloudBookSource
 AI_BOOKSOURCE_URL=https://github.com/lindongjiang/xiangseSkill
@@ -60,6 +61,8 @@ DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=cloud_book_source
 ```
+
+`SITE_URL` 用于生成 `canonical`、`og:url` 与 `sitemap.xml` 的完整地址，建议填写线上正式域名。
 
 ## 启动
 
@@ -115,6 +118,20 @@ npm run seed
 - `POST /index/register/register.html`（已停用，自动跳转到 GitHub 登录）
 - `GET /index/durl/add.html?data=base64(url)`
 - `GET /d/:hash`
+
+## Google 索引建议
+
+部署后可直接访问并提交以下地址到 Google Search Console：
+
+- `https://你的域名/robots.txt`
+- `https://你的域名/sitemap.xml`
+
+站点已内置基础 SEO：
+
+- 页面 `title/description/keywords/robots/canonical`
+- `og:` Open Graph 标签
+- 首页结构化数据（JSON-LD）
+- 面向关键词“香色闺阁 / 香色闺阁书源 / 香色闺阁安装”的页面文案与索引入口
 
 ## 说明
 

@@ -26,6 +26,7 @@ const DB_USER = process.env.DB_USER || 'root';
 const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'cloud_book_source';
 const SITE_NAME = process.env.SITE_NAME || '香色源';
+const SITE_URL = process.env.SITE_URL || '';
 const AI_BOOKSOURCE_URL =
   process.env.AI_BOOKSOURCE_URL || 'https://github.com/lindongjiang/xiangseSkill';
 const APP_INSTALL_URL =
@@ -288,6 +289,7 @@ app.use((req, res, next) => {
     androidDownloads: baseMeta.downloadButtons || [],
     androidRelatedLinks: baseMeta.relatedLinks || [],
   };
+  res.locals.seo = buildSeoContext(req, siteMode, baseMeta);
   next();
 });
 
@@ -311,6 +313,62 @@ const upload = multer({
     }
     cb(new Error('仅支持 JSON / XBS 文件'));
   },
+});
+
+app.get('/robots.txt', (req, res) => {
+  const base = getSiteBaseUrl(req);
+  const lines = [
+    'User-agent: *',
+    'Allow: /',
+    '',
+    'Disallow: /index/login/',
+    'Disallow: /index/register/',
+    'Disallow: /index/logout',
+    'Disallow: /index/durl/',
+    'Disallow: /d/',
+    '',
+    `Sitemap: ${base}/sitemap.xml`,
+  ];
+  res.type('text/plain; charset=utf-8').send(lines.join('\n'));
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  const base = getSiteBaseUrl(req);
+  const today = new Date().toISOString().slice(0, 10);
+  const staticPaths = [
+    '/',
+    '/yuedu/index/index.html?mode=ios',
+    '/yuedu/index/index.html?mode=android',
+    '/yuedu/tools/index.html?mode=ios',
+    '/yuedu/tools/index.html?mode=android',
+    '/yuedu/install/index.html?mode=ios',
+    '/yuedu/install/index.html?mode=android',
+    '/yuedu/activation/index.html?mode=ios',
+    '/yuedu/activation/index.html?mode=android',
+    '/yuedu/shuyuan/index.html?mode=ios',
+    '/yuedu/shuyuan/index.html?mode=android',
+    '/yuedu/shuyuans/index.html?mode=ios',
+    '/yuedu/shuyuans/index.html?mode=android',
+  ];
+
+  const urls = staticPaths.map((p) => ({
+    loc: `${base}${p}`,
+    lastmod: today,
+    changefreq: 'daily',
+    priority: p === '/' || p.includes('/yuedu/index/index.html') ? '1.0' : '0.8',
+  }));
+
+  const xml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ...urls.map(
+      (item) =>
+        `<url><loc>${escapeXml(item.loc)}</loc><lastmod>${item.lastmod}</lastmod><changefreq>${item.changefreq}</changefreq><priority>${item.priority}</priority></url>`
+    ),
+    '</urlset>',
+  ].join('');
+
+  res.type('application/xml; charset=utf-8').send(xml);
 });
 
 app.get('/', (_, res) => {
@@ -482,7 +540,7 @@ app.get('/yuedu/:type/index.html', async (req, res, next) => {
   const offset = (page - 1) * pageSize;
 
   const rows = await query(
-    `select id, type, title, source_url, ver, has_faxian, has_sousuo, has_tu, has_shengyin, source_count, download_count, author_uid, author_name, created_at, updated_at
+    `select id, type, title, source_url, ver, has_faxian, has_sousuo, has_tu, has_shengyin, source_count, download_count, author_uid, author_name, show_author, created_at, updated_at
      from entries
      where ${whereSql}
      ${orderSql}
@@ -727,6 +785,47 @@ app.post('/yuedu/:type/del-mine.json', requireLoginJson, async (req, res, next) 
   res.json({
     code: 1,
     msg: `已删除你上传的 ${affected} 条书源`,
+    data: '',
+    url: `/yuedu/${cfg.key}/index.html`,
+    wait: 1,
+  });
+});
+
+app.post('/yuedu/:type/author-visibility-mine.json', requireLoginJson, async (req, res, next) => {
+  const cfg = TYPE_CONFIG[req.params.type];
+  if (!cfg) {
+    next();
+    return;
+  }
+
+  const uid = Number(req.session?.user?.uid || 0);
+  if (!(uid > 0)) {
+    res.json({ code: 0, msg: '请先登录', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const visibleRaw = String(req.body?.visible ?? '').trim();
+  if (visibleRaw !== '0' && visibleRaw !== '1') {
+    res.json({ code: 0, msg: '参数错误', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  const visible = Number(visibleRaw);
+  const platform = resolveCurrentPlatform(req);
+  const now = Date.now();
+  const result = await query(
+    'update entries set show_author = ?, updated_at = ? where type = ? and platform = ? and is_deleted = 0 and author_uid = ?',
+    [visible, now, cfg.key, platform, uid]
+  );
+  const affected = Number(result?.affectedRows || 0);
+  if (affected < 1) {
+    res.json({ code: 0, msg: '你在当前分类暂无可更新的书源', data: '', url: '', wait: 2 });
+    return;
+  }
+
+  res.json({
+    code: 1,
+    msg: visible === 1 ? `已显示你上传的 ${affected} 条书源用户名` : `已隐藏你上传的 ${affected} 条书源用户名`,
     data: '',
     url: `/yuedu/${cfg.key}/index.html`,
     wait: 1,
@@ -1069,6 +1168,7 @@ async function initDb() {
       download_count bigint not null default 0,
       author_uid bigint not null,
       author_name varchar(191) not null,
+      show_author tinyint(1) not null default 1,
       file_path text null,
       file_name varchar(512) null,
       is_deleted tinyint(1) not null default 0,
@@ -1080,6 +1180,7 @@ async function initDb() {
     ) engine=InnoDB default charset=utf8mb4
   `);
   await ensureEntriesPlatformColumn();
+  await ensureEntriesShowAuthorColumn();
 
   await query(`
     create table if not exists short_links (
@@ -1145,6 +1246,15 @@ async function ensureEntriesPlatformColumn() {
   if (!indexNames.has('idx_entries_platform_type_download')) {
     await query('alter table entries add key idx_entries_platform_type_download (platform, type, download_count)');
   }
+}
+
+async function ensureEntriesShowAuthorColumn() {
+  const cols = await query('show columns from entries');
+  const columnNames = new Set(cols.map((x) => String(x.Field || '').toLowerCase()));
+  if (!columnNames.has('show_author')) {
+    await query('alter table entries add column show_author tinyint(1) not null default 1 after author_name');
+  }
+  await query('update entries set show_author = 1 where show_author is null');
 }
 
 async function seedData() {
@@ -2295,6 +2405,139 @@ function getRequestOrigin(req) {
   const proto = xfProto || req.protocol || 'http';
   const host = xfHost || req.get('host') || 'localhost';
   return `${proto}://${host}`;
+}
+
+function getSiteBaseUrl(req) {
+  const configured = String(SITE_URL || '').trim().replace(/\/+$/, '');
+  if (configured && /^https?:\/\//i.test(configured)) {
+    return configured;
+  }
+  return getRequestOrigin(req);
+}
+
+function buildSeoContext(req, siteMode, baseMeta) {
+  const pathName = String(req.path || '/').trim() || '/';
+  const indexable = !(
+    pathName.startsWith('/index/login') ||
+    pathName.startsWith('/index/register') ||
+    pathName.startsWith('/index/logout') ||
+    pathName.startsWith('/index/durl') ||
+    pathName.startsWith('/d/')
+  );
+  const robots = indexable ? 'index,follow,max-image-preview:large' : 'noindex,nofollow';
+
+  const canonicalPath = pathName.startsWith('/yuedu/')
+    ? `${pathName}?mode=${encodeURIComponent(siteMode)}`
+    : pathName;
+  const base = getSiteBaseUrl(req);
+  const canonical = `${base}${canonicalPath}`;
+
+  const defaults =
+    siteMode === 'android'
+      ? {
+          title: `开源阅读书源_安卓阅读安装下载_${baseMeta.siteName}`,
+          description:
+            '开源阅读安卓书源仓库，提供阅读 App 下载、开源地址、社区入口与书源分享，支持 JSON/XBS 上传与下载。',
+          keywords: '开源阅读,开源阅读书源,安卓阅读书源,阅读app下载,阅读书源',
+        }
+      : {
+          title: `香色闺阁书源_香色闺阁安装教程_${baseMeta.siteName}`,
+          description:
+            '香色源提供香色闺阁书源分享、香色闺阁安装教程、MT助手下载与卡密入口，支持 XBS/JSON 书源上传与下载。',
+          keywords: '香色闺阁,香色闺阁书源,香色闺阁安装,香色书源,MT助手,馒头助手',
+        };
+
+  const routeMap = {
+    '/': defaults,
+    '/yuedu/index/index.html':
+      siteMode === 'android'
+        ? {
+            title: `开源阅读书源首页_安卓阅读下载_${baseMeta.siteName}`,
+            description:
+              '开源阅读安卓书源首页，聚合下载地址、开源仓库与书源社区信息，支持书源上传与管理。',
+            keywords: '开源阅读书源,安卓阅读下载,阅读app开源',
+          }
+        : {
+            title: `香色闺阁书源首页_香色闺阁安装_${baseMeta.siteName}`,
+            description:
+              '香色闺阁书源首页，提供香色闺阁书源列表、书源合集、香色闺阁安装教程与激活入口。',
+            keywords: '香色闺阁书源,香色闺阁安装,香色闺阁,香色源',
+          },
+    '/yuedu/install/index.html':
+      siteMode === 'android'
+        ? {
+            title: `开源阅读安卓下载与安装_${baseMeta.siteName}`,
+            description: '开源阅读安卓安装与下载页面，含正式版/Beta 下载地址和开源社区链接。',
+            keywords: '开源阅读安装,开源阅读下载,安卓阅读app',
+          }
+        : {
+            title: `香色闺阁安装教程_MT助手下载_${baseMeta.siteName}`,
+            description:
+              '香色闺阁安装教程页面，包含 MT 助手 Windows/macOS 下载、步骤说明与覆盖安装说明。',
+            keywords: '香色闺阁安装,香色闺阁安装教程,MT助手下载,馒头助手',
+          },
+    '/yuedu/shuyuan/index.html':
+      siteMode === 'android'
+        ? {
+            title: `开源阅读书源列表_${baseMeta.siteName}`,
+            description: '开源阅读安卓书源列表，支持检索、批量下载与上传分享。',
+            keywords: '开源阅读书源,安卓书源下载',
+          }
+        : {
+            title: `香色闺阁书源列表_${baseMeta.siteName}`,
+            description: '香色闺阁书源列表，支持筛选、全选下载与上传分享。',
+            keywords: '香色闺阁书源,香色书源下载',
+          },
+    '/yuedu/shuyuans/index.html':
+      siteMode === 'android'
+        ? {
+            title: `开源阅读书源合集_${baseMeta.siteName}`,
+            description: '开源阅读书源合集页面，支持批量管理与下载。',
+            keywords: '开源阅读书源合集,安卓书源合集',
+          }
+        : {
+            title: `香色闺阁书源合集_${baseMeta.siteName}`,
+            description: '香色闺阁书源合集页面，支持批量管理与下载。',
+            keywords: '香色闺阁书源合集,香色书源合集',
+          },
+    '/yuedu/tools/index.html': {
+      title: `PDF工具中心_${baseMeta.siteName}`,
+      description:
+        'PDF 工具中心，提供 PDF 合并、压缩、转换等工具规划与自研技术路线（pdf2docx、Pandoc、Apryse）。',
+      keywords: 'PDF工具,PDF转换,PDF转Word,pdf2docx,Pandoc,Apryse',
+    },
+  };
+
+  const selected = routeMap[pathName] || defaults;
+  const seo = {
+    ...selected,
+    canonical,
+    robots,
+    ogType: 'website',
+    ogImage: `${base}${baseMeta.logoUrl || '/static/images/xiangse-logo.png'}`,
+  };
+
+  if (pathName === '/' || pathName === '/yuedu/index/index.html') {
+    seo.jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: baseMeta.siteName,
+      url: canonical,
+      inLanguage: 'zh-CN',
+      description: selected.description,
+    };
+  }
+
+  return seo;
+}
+
+function escapeXml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 function buildGithubOauthCallbackUrl(req) {

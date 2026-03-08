@@ -15,6 +15,10 @@
           <% } %>
         <% } %>
         <a href="/yuedu/<%= cfg.key %>/add.html" class="layui-btn layui-btn-sm layui-btn-normal">新建</a>
+        <% if (cfg.kind === 'single' && currentUser) { %>
+          <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="hideMyName">隐藏我用户名</button>
+          <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="showMyName">显示我用户名</button>
+        <% } %>
         <button type="button" class="layui-btn layui-btn-sm layui-btn-primary m-right" id="sokeybtn" style="top: 5px;">
           <i class="layui-icon layui-icon-search" style="font-size: 20px;"></i>
         </button>
@@ -113,7 +117,11 @@
               <% } else { %>
                 <span class="layui-badge-rim layui-bg-gray layui-font-green">源数量:<%= entry.source_count || 0 %></span>
               <% } %>
-              <span class="layui-badge-rim layui-bg-gray layui-font-red" title="UID:<%= entry.author_uid %>">用户: <%= entry.author_name %></span>
+              <% if (Number(entry.show_author || 0) === 1) { %>
+                <span class="layui-badge-rim layui-bg-gray layui-font-red" title="UID:<%= entry.author_uid %>">用户: <%= entry.author_name %></span>
+              <% } else { %>
+                <span class="layui-badge-rim layui-bg-gray">用户: 匿名上传</span>
+              <% } %>
               <span class="layui-badge-rim layui-bg-gray layui-font-purple">下载:<%= entry.download_count %></span>
             </div>
           </div>
@@ -305,6 +313,21 @@
     }
   }
 
+  async function updateMyNameVisibility(visible) {
+    const res = await fetch('/yuedu/<%= cfg.key %>/author-visibility-mine.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visible: visible ? 1 : 0 }),
+    });
+    const data = await res.json();
+    layui.layer.msg(data.msg || '操作完成');
+    if (data.code === 1) {
+      setTimeout(function () {
+        window.location.reload();
+      }, 450);
+    }
+  }
+
   document.getElementById('addjson').addEventListener('click', function () {
     onGenerate().catch(function (err) {
       console.error(err);
@@ -340,6 +363,32 @@
         deleteAllMine().catch(function (err) {
           console.error(err);
           layui.layer.msg('删除失败');
+        });
+      });
+    });
+  }
+
+  const hideMyNameBtn = document.getElementById('hideMyName');
+  if (hideMyNameBtn) {
+    hideMyNameBtn.addEventListener('click', function () {
+      layui.layer.confirm('将隐藏你在当前分类上传书源的用户名显示，确认继续吗？', { icon: 3, title: '提示' }, function (index) {
+        layui.layer.close(index);
+        updateMyNameVisibility(false).catch(function (err) {
+          console.error(err);
+          layui.layer.msg('操作失败');
+        });
+      });
+    });
+  }
+
+  const showMyNameBtn = document.getElementById('showMyName');
+  if (showMyNameBtn) {
+    showMyNameBtn.addEventListener('click', function () {
+      layui.layer.confirm('将显示你在当前分类上传书源的用户名，确认继续吗？', { icon: 3, title: '提示' }, function (index) {
+        layui.layer.close(index);
+        updateMyNameVisibility(true).catch(function (err) {
+          console.error(err);
+          layui.layer.msg('操作失败');
         });
       });
     });
