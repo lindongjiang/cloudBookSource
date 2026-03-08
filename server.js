@@ -514,10 +514,15 @@ app.get('/yuedu/:type/content/id/:id.html', async (req, res, next) => {
   }
 
   const id = toInt(req.params.id, 0);
-  const entries = await query('select * from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
+  const platform = resolveCurrentPlatform(req);
+  const entries = await query(
+    'select * from entries where id = ? and type = ? and platform = ? and is_deleted = 0 limit 1',
+    [
     id,
     cfg.key,
-  ]);
+      platform,
+    ]
+  );
   const entry = entries[0];
 
   if (!entry) {
@@ -599,10 +604,15 @@ app.get('/yuedu/:type/del/id/:id.html', requireLoginJson, async (req, res, next)
   }
 
   const id = toInt(req.params.id, 0);
-  const rows = await query('select id, author_uid from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
+  const platform = resolveCurrentPlatform(req);
+  const rows = await query(
+    'select id, author_uid from entries where id = ? and type = ? and platform = ? and is_deleted = 0 limit 1',
+    [
     id,
     cfg.key,
-  ]);
+      platform,
+    ]
+  );
 
   if (rows.length < 1) {
     res.json({ code: 0, msg: '数据不存在', data: '', url: '', wait: 2 });
@@ -615,7 +625,12 @@ app.get('/yuedu/:type/del/id/:id.html', requireLoginJson, async (req, res, next)
     return;
   }
 
-  await query('update entries set is_deleted = 1, updated_at = ? where id = ?', [Date.now(), id]);
+  await query('update entries set is_deleted = 1, updated_at = ? where id = ? and type = ? and platform = ?', [
+    Date.now(),
+    id,
+    cfg.key,
+    platform,
+  ]);
   res.json({ code: 1, msg: '删除成功', data: '', url: `/yuedu/${cfg.key}/index.html`, wait: 1 });
 });
 
@@ -627,6 +642,7 @@ app.post('/yuedu/:type/del-selected.json', requireLoginJson, async (req, res, ne
   }
 
   const ids = parseIdList(req.body?.ids ?? req.body?.id ?? '');
+  const platform = resolveCurrentPlatform(req);
   if (ids.length < 1) {
     res.json({ code: 0, msg: '请先勾选要删除的数据', data: '', url: '', wait: 2 });
     return;
@@ -634,8 +650,8 @@ app.post('/yuedu/:type/del-selected.json', requireLoginJson, async (req, res, ne
 
   const placeholders = ids.map(() => '?').join(',');
   const rows = await query(
-    `select id, author_uid from entries where type = ? and is_deleted = 0 and id in (${placeholders})`,
-    [cfg.key, ...ids]
+    `select id, author_uid from entries where type = ? and platform = ? and is_deleted = 0 and id in (${placeholders})`,
+    [cfg.key, platform, ...ids]
   );
   if (rows.length < 1) {
     res.json({ code: 0, msg: '选中的数据不存在', data: '', url: '', wait: 2 });
@@ -655,8 +671,8 @@ app.post('/yuedu/:type/del-selected.json', requireLoginJson, async (req, res, ne
   const now = Date.now();
   const allowPlaceholders = allowedIds.map(() => '?').join(',');
   const result = await query(
-    `update entries set is_deleted = 1, updated_at = ? where type = ? and id in (${allowPlaceholders})`,
-    [now, cfg.key, ...allowedIds]
+    `update entries set is_deleted = 1, updated_at = ? where type = ? and platform = ? and id in (${allowPlaceholders})`,
+    [now, cfg.key, platform, ...allowedIds]
   );
   const affected = Number(result?.affectedRows || 0);
   const skipped = ids.length - allowedIds.length;
@@ -678,6 +694,7 @@ app.post('/yuedu/:type/del-mine.json', requireLoginJson, async (req, res, next) 
   }
 
   const uid = Number(req.session?.user?.uid || 0);
+  const platform = resolveCurrentPlatform(req);
   if (!(uid > 0)) {
     res.json({ code: 0, msg: '请先登录', data: '', url: '', wait: 2 });
     return;
@@ -685,8 +702,8 @@ app.post('/yuedu/:type/del-mine.json', requireLoginJson, async (req, res, next) 
 
   const now = Date.now();
   const result = await query(
-    'update entries set is_deleted = 1, updated_at = ? where type = ? and is_deleted = 0 and author_uid = ?',
-    [now, cfg.key, uid]
+    'update entries set is_deleted = 1, updated_at = ? where type = ? and platform = ? and is_deleted = 0 and author_uid = ?',
+    [now, cfg.key, platform, uid]
   );
   const affected = Number(result?.affectedRows || 0);
   if (affected < 1) {
@@ -711,10 +728,11 @@ app.get('/yuedu/:type/json/id/:id.json', async (req, res, next) => {
   }
 
   const id = toInt(req.params.id, 0);
-  const entries = await query('select * from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
-    id,
-    cfg.key,
-  ]);
+  const platform = resolveCurrentPlatform(req);
+  const entries = await query(
+    'select * from entries where id = ? and type = ? and platform = ? and is_deleted = 0 limit 1',
+    [id, cfg.key, platform]
+  );
   const entry = entries[0];
 
   if (!entry) {
@@ -723,7 +741,11 @@ app.get('/yuedu/:type/json/id/:id.json', async (req, res, next) => {
   }
 
   const data = parseEntryJson(entry, cfg);
-  await query('update entries set download_count = download_count + 1 where id = ?', [id]);
+  await query('update entries set download_count = download_count + 1 where id = ? and type = ? and platform = ?', [
+    id,
+    cfg.key,
+    platform,
+  ]);
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename=${Date.now()}.json`);
@@ -738,10 +760,11 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
   }
 
   const id = toInt(req.params.id, 0);
-  const entries = await query('select * from entries where id = ? and type = ? and is_deleted = 0 limit 1', [
-    id,
-    cfg.key,
-  ]);
+  const platform = resolveCurrentPlatform(req);
+  const entries = await query(
+    'select * from entries where id = ? and type = ? and platform = ? and is_deleted = 0 limit 1',
+    [id, cfg.key, platform]
+  );
   const entry = entries[0];
 
   if (!entry) {
@@ -751,7 +774,11 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
 
   const preservedXbsPath = resolvePreservedXbsPath(entry);
   if (preservedXbsPath) {
-    await query('update entries set download_count = download_count + 1 where id = ?', [id]);
+    await query('update entries set download_count = download_count + 1 where id = ? and type = ? and platform = ?', [
+      id,
+      cfg.key,
+      platform,
+    ]);
     const downloadName = buildSafeXbsDownloadName(entry.file_name, `${Date.now()}.xbs`);
     res.download(preservedXbsPath, downloadName, (err) => {
       if (err && !res.headersSent) {
@@ -767,7 +794,11 @@ app.get('/yuedu/:type/xbs/id/:id.xbs', async (req, res, next) => {
     const xbsPayload = buildXbsExportPayload(data);
     tempFiles = await convertJsonDataToXbs(xbsPayload);
     ensureGeneratedXbsFile(tempFiles.xbsPath);
-    await query('update entries set download_count = download_count + 1 where id = ?', [id]);
+    await query('update entries set download_count = download_count + 1 where id = ? and type = ? and platform = ?', [
+      id,
+      cfg.key,
+      platform,
+    ]);
 
     res.download(tempFiles.xbsPath, `${Date.now()}.xbs`, (err) => {
       cleanupTempFiles(tempFiles);
@@ -788,6 +819,7 @@ app.get('/yuedu/:type/jsons', async (req, res, next) => {
     return;
   }
 
+  const platform = resolveCurrentPlatform(req);
   const ids = String(req.query.id || req.query.ids || '')
     .split(/[-,]/)
     .map((x) => toInt(x, 0))
@@ -800,8 +832,8 @@ app.get('/yuedu/:type/jsons', async (req, res, next) => {
 
   const placeholders = ids.map(() => '?').join(',');
   const rows = await query(
-    `select * from entries where type = ? and is_deleted = 0 and id in (${placeholders})`,
-    [cfg.key, ...ids]
+    `select * from entries where type = ? and platform = ? and is_deleted = 0 and id in (${placeholders})`,
+    [cfg.key, platform, ...ids]
   );
 
   const merged = [];
@@ -816,7 +848,10 @@ app.get('/yuedu/:type/jsons', async (req, res, next) => {
 
   if (rows.length > 0) {
     const hitPlaceholders = rows.map(() => '?').join(',');
-    await query(`update entries set download_count = download_count + 1 where id in (${hitPlaceholders})`, rows.map((x) => x.id));
+    await query(
+      `update entries set download_count = download_count + 1 where type = ? and platform = ? and id in (${hitPlaceholders})`,
+      [cfg.key, platform, ...rows.map((x) => x.id)]
+    );
   }
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -831,6 +866,7 @@ app.get('/yuedu/:type/xbss', async (req, res, next) => {
     return;
   }
 
+  const platform = resolveCurrentPlatform(req);
   const ids = String(req.query.id || req.query.ids || '')
     .split(/[-,]/)
     .map((x) => toInt(x, 0))
@@ -843,8 +879,8 @@ app.get('/yuedu/:type/xbss', async (req, res, next) => {
 
   const placeholders = ids.map(() => '?').join(',');
   const rows = await query(
-    `select * from entries where type = ? and is_deleted = 0 and id in (${placeholders})`,
-    [cfg.key, ...ids]
+    `select * from entries where type = ? and platform = ? and is_deleted = 0 and id in (${placeholders})`,
+    [cfg.key, platform, ...ids]
   );
 
   const merged = [];
@@ -859,7 +895,10 @@ app.get('/yuedu/:type/xbss', async (req, res, next) => {
 
   if (rows.length > 0) {
     const hitPlaceholders = rows.map(() => '?').join(',');
-    await query(`update entries set download_count = download_count + 1 where id in (${hitPlaceholders})`, rows.map((x) => x.id));
+    await query(
+      `update entries set download_count = download_count + 1 where type = ? and platform = ? and id in (${hitPlaceholders})`,
+      [cfg.key, platform, ...rows.map((x) => x.id)]
+    );
   }
 
   let tempFiles = null;
@@ -1003,6 +1042,7 @@ async function initDb() {
     create table if not exists entries (
       id bigint unsigned not null auto_increment,
       type varchar(16) not null,
+      platform varchar(16) not null default 'ios',
       title varchar(512) not null,
       source_url text null,
       code_text longtext null,
@@ -1022,10 +1062,11 @@ async function initDb() {
       created_at bigint not null,
       updated_at bigint not null,
       primary key (id),
-      key idx_entries_type_updated (type, updated_at),
-      key idx_entries_type_download (type, download_count)
+      key idx_entries_platform_type_updated (platform, type, updated_at),
+      key idx_entries_platform_type_download (platform, type, download_count)
     ) engine=InnoDB default charset=utf8mb4
   `);
+  await ensureEntriesPlatformColumn();
 
   await query(`
     create table if not exists short_links (
@@ -1070,6 +1111,26 @@ async function ensureUsersOauthColumns() {
   const indexNames = new Set(indexes.map((x) => String(x.Key_name || '')));
   if (!indexNames.has('uk_users_github_id')) {
     await query('alter table users add unique key uk_users_github_id (github_id)');
+  }
+}
+
+async function ensureEntriesPlatformColumn() {
+  const cols = await query('show columns from entries');
+  const columnNames = new Set(cols.map((x) => String(x.Field || '').toLowerCase()));
+
+  if (!columnNames.has('platform')) {
+    await query("alter table entries add column platform varchar(16) not null default 'ios' after type");
+  }
+
+  await query("update entries set platform = 'ios' where platform is null or platform = ''");
+
+  const indexes = await query('show index from entries');
+  const indexNames = new Set(indexes.map((x) => String(x.Key_name || '')));
+  if (!indexNames.has('idx_entries_platform_type_updated')) {
+    await query('alter table entries add key idx_entries_platform_type_updated (platform, type, updated_at)');
+  }
+  if (!indexNames.has('idx_entries_platform_type_download')) {
+    await query('alter table entries add key idx_entries_platform_type_download (platform, type, download_count)');
   }
 }
 
@@ -1168,15 +1229,17 @@ async function seedData() {
 }
 
 async function insertEntry(entry) {
+  const platform = resolveSiteMode(entry.platform);
   await query(
     `insert into entries(
-      type, title, source_url, code_text, content_html,
+      type, platform, title, source_url, code_text, content_html,
       ver, has_faxian, has_sousuo, has_tu, has_shengyin,
       source_count, download_count, author_uid, author_name,
       file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     [
       entry.type,
+      platform,
       entry.title,
       entry.source_url,
       entry.code_text,
@@ -1199,15 +1262,17 @@ async function insertEntry(entry) {
 }
 
 async function insertSingleEntry(row) {
+  const platform = resolveSiteMode(row.platform);
   return query(
     `insert into entries(
-      type, title, source_url, code_text, content_html,
+      type, platform, title, source_url, code_text, content_html,
       ver, has_faxian, has_sousuo, has_tu, has_shengyin,
       source_count, download_count, author_uid, author_name,
       file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
+    ) values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
     [
       row.type,
+      platform,
       row.title,
       row.source_url,
       row.code_text,
@@ -1228,7 +1293,7 @@ async function insertSingleEntry(row) {
   );
 }
 
-function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fixedTimestamp) {
+function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fixedTimestamp, platform) {
   const source = isPlainObject(sourceObj) ? sourceObj : {};
   const now = fixedTimestamp || Date.now();
 
@@ -1261,6 +1326,7 @@ function buildSingleSourceEntryRow(cfg, body, user, sourceObj, fallbackTitle, fi
 
   return {
     type: cfg.key,
+    platform: resolveSiteMode(platform),
     title,
     source_url: sourceUrl,
     code_text: JSON.stringify(source, null, 2),
@@ -1292,9 +1358,9 @@ function isUploadedXbs(file, convertedFromXbs) {
 }
 
 function buildListQuery(cfg, queryParams, options = {}) {
-  const where = ['type = ?', 'is_deleted = 0'];
-  const params = [cfg.key];
-  const siteMode = String(options.siteMode || '').trim();
+  const platform = resolveSiteMode(options.siteMode);
+  const where = ['type = ?', 'platform = ?', 'is_deleted = 0'];
+  const params = [cfg.key, platform];
 
   const keys = String(queryParams.keys || '').trim();
   if (keys) {
@@ -1310,7 +1376,7 @@ function buildListQuery(cfg, queryParams, options = {}) {
   }
 
   if (cfg.kind === 'single') {
-    if (cfg.key === 'shuyuan' && siteMode === 'ios') {
+    if (cfg.key === 'shuyuan' && platform === 'ios') {
       where.push("title not like '示例书源 %'");
       where.push("source_url not like 'https://example%.com'");
     }
@@ -1347,6 +1413,7 @@ function buildListQuery(cfg, queryParams, options = {}) {
 }
 
 async function handleSingleAdd(req, res, cfg) {
+  const platform = resolveCurrentPlatform(req);
   const rawCode = String(req.body.code || '').trim();
   let parsed;
   let convertedFromXbs = false;
@@ -1403,7 +1470,15 @@ async function handleSingleAdd(req, res, cfg) {
     for (let index = 0; index < arr.length; index += 1) {
       const source = arr[index];
       const fallbackTitle = `${cfg.label}-${now}-${index + 1}`;
-      const row = buildSingleSourceEntryRow(cfg, req.body, req.session.user, source, fallbackTitle, now);
+      const row = buildSingleSourceEntryRow(
+        cfg,
+        req.body,
+        req.session.user,
+        source,
+        fallbackTitle,
+        now,
+        platform
+      );
       const result = await insertSingleEntry(row);
       createdIds.push(result.insertId);
     }
@@ -1440,7 +1515,9 @@ async function handleSingleAdd(req, res, cfg) {
     req.body,
     req.session.user,
     first,
-    title
+    title,
+    undefined,
+    platform
   );
   row.code_text = JSON.stringify(parsed, null, 2);
   row.source_count = arr.length;
@@ -1471,6 +1548,7 @@ async function handleFileAdd(req, res, cfg) {
     res.json({ code: 0, msg: '请先选择要分享的文件！', data: '', url: '', wait: 2 });
     return;
   }
+  const platform = resolveCurrentPlatform(req);
 
   const title = clipText(
     String(req.body.title || req.body.titles || path.parse(req.file.originalname).name || '').trim(),
@@ -1518,13 +1596,14 @@ async function handleFileAdd(req, res, cfg) {
 
   const result = await query(
     `insert into entries(
-      type, title, source_url, code_text, content_html,
+      type, platform, title, source_url, code_text, content_html,
       ver, has_faxian, has_sousuo, has_tu, has_shengyin,
       source_count, download_count, author_uid, author_name,
       file_path, file_name, is_deleted, created_at, updated_at
-    ) values(?, ?, '', ?, ?, null, 0, 0, 0, 0, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
+    ) values(?, ?, ?, '', ?, ?, null, 0, 0, 0, 0, ?, 0, ?, ?, ?, ?, 0, ?, ?)`,
     [
       cfg.key,
+      platform,
       title,
       codeText,
       contentHtml,
@@ -2254,6 +2333,10 @@ function resolveSiteMode(value) {
   if (mode) return mode;
   const fallback = normalizeSiteMode(SITE_MODE_DEFAULT);
   return fallback || 'ios';
+}
+
+function resolveCurrentPlatform(req) {
+  return resolveSiteMode(req?.session?.siteMode);
 }
 
 function normalizeRedirectPath(value) {
