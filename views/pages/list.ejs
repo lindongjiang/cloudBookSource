@@ -7,6 +7,7 @@
       <div class="top-tools">
         <% if (cfg.kind === 'single') { %>
           <input type="checkbox" id="class_all" title="全选" />
+          <button type="button" class="layui-btn layui-btn-sm layui-btn-normal" id="downloadSelected">一键下载选中<%= preferXbsExport ? 'XBS' : 'JSON' %></button>
           <button type="button" class="layui-btn layui-btn-sm layui-btn-warm" id="addjson"><%= preferXbsExport ? '下载选中XBS' : '生成' %></button>
           <% if (currentUser) { %>
             <button type="button" class="layui-btn layui-btn-sm layui-btn-danger" id="delSelected">删除选中(仅自己)</button>
@@ -169,20 +170,54 @@
 <% if (cfg.kind === 'single') { %>
 <script>
   const classAll = document.getElementById('class_all');
+  const oneChecks = Array.from(document.querySelectorAll('.class_one'));
+
+  function getCheckedIds() {
+    return Array.from(document.querySelectorAll('.class_one:checked')).map(function (x) {
+      return x.value;
+    });
+  }
+
+  function syncClassAllState() {
+    if (!classAll) return;
+    const total = oneChecks.length;
+    const checked = getCheckedIds().length;
+    classAll.indeterminate = checked > 0 && checked < total;
+    classAll.checked = total > 0 && checked === total;
+  }
+
+  function buildBatchDownloadUrl(ids) {
+    return location.origin + '/yuedu/<%= cfg.key %>/<%= preferXbsExport ? 'xbss' : 'jsons' %>?ids=' + encodeURIComponent(ids.join(','));
+  }
+
+  function downloadSelectedOnce() {
+    const ids = getCheckedIds();
+    if (ids.length < 1) {
+      layui.layer.msg('请先选中要下载的数据!');
+      return;
+    }
+
+    const downloadUrl = buildBatchDownloadUrl(ids);
+    window.open(downloadUrl, '_blank');
+    layui.layer.msg('已开始下载选中合集');
+  }
+
   if (classAll) {
     classAll.addEventListener('change', function () {
       document.querySelectorAll('.class_one').forEach(function (node) {
         node.checked = classAll.checked;
       });
+      syncClassAllState();
     });
   }
 
-  document.querySelectorAll('.class_one').forEach(function (node) {
+  oneChecks.forEach(function (node) {
     node.addEventListener('change', function () {
-      const all = Array.from(document.querySelectorAll('.class_one'));
-      classAll.checked = all.length > 0 && all.every(function (x) { return x.checked; });
+      syncClassAllState();
     });
   });
+
+  syncClassAllState();
 
   function toBase64Unicode(str) {
     return btoa(unescape(encodeURIComponent(str)));
@@ -194,13 +229,13 @@
   }
 
   async function onGenerate() {
-    const ids = Array.from(document.querySelectorAll('.class_one:checked')).map(function (x) { return x.value; });
+    const ids = getCheckedIds();
     if (ids.length < 1) {
       layui.layer.msg('请先选中要生成的数据!');
       return;
     }
 
-    const downloadUrl = location.origin + '/yuedu/<%= cfg.key %>/<%= preferXbsExport ? 'xbss' : 'jsons' %>?id=' + ids.join('-');
+    const downloadUrl = buildBatchDownloadUrl(ids);
     if (preferXbsExport) {
       window.open(downloadUrl, '_blank');
       layui.layer.msg('已开始下载XBS合集，下载次数会自动统计');
@@ -235,7 +270,7 @@
   }
 
   async function deleteSelectedMine() {
-    const ids = Array.from(document.querySelectorAll('.class_one:checked')).map(function (x) { return x.value; });
+    const ids = getCheckedIds();
     if (ids.length < 1) {
       layui.layer.msg('请先勾选要删除的条目');
       return;
@@ -276,6 +311,13 @@
       layui.layer.msg('操作失败');
     });
   });
+
+  const downloadSelectedBtn = document.getElementById('downloadSelected');
+  if (downloadSelectedBtn) {
+    downloadSelectedBtn.addEventListener('click', function () {
+      downloadSelectedOnce();
+    });
+  }
 
   const delSelectedBtn = document.getElementById('delSelected');
   if (delSelectedBtn) {
