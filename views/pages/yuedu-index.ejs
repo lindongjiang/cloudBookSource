@@ -19,13 +19,14 @@
             <% siteMeta.androidDownloads.forEach(function(item){ %>
               <a class="layui-btn layui-btn-fluid xi-red-btn" href="<%= item.url %>" target="_blank"><%= item.label %></a>
             <% }) %>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" href="<%= siteMeta.aiBookSourceUrl %>" target="_blank">AI写书源由天天的鸟蛋蛋提供</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
           <% } else { %>
             <a class="layui-btn layui-btn-fluid xi-red-btn" href="/yuedu/shuyuan/index.html">进入书源仓库</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/shuyuans/index.html">进入书源合集</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/install/index.html">App 安装教程</a>
             <a class="layui-btn layui-btn-fluid layui-btn-primary" href="/yuedu/activation/index.html">激活码购买地址</a>
-            <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.iosAutoSourceBilibiliUrl %>">自动话写源(墨点无痕)</a>
+            <a class="layui-btn layui-btn-fluid layui-btn-primary" target="_blank" href="<%= siteMeta.iosAutoSourceBilibiliUrl %>">AI写出书源由墨点无痕提供</a>
           <% } %>
         </div>
       </div>
@@ -73,7 +74,7 @@
   </div>
 
   <% if (siteMode === 'ios') { %>
-    <div class="layui-row layui-col-space20" style="margin-top: 2px;">
+    <div class="layui-row layui-col-space20" style="margin-top: 2px;" id="help-request-panel">
       <div class="layui-col-xs12">
         <div class="layui-panel xi-card">
           <blockquote class="layui-elem-quote" style="margin-left: -10px; margin-right: -10px;">

@@ -81,6 +81,9 @@
               <li class="<%= currentType === 'install' ? 'layui-this' : '' %>"><a href="/yuedu/install/index.html"><%= siteMeta.installNavLabel %></a></li>
               <li class="<%= currentType === 'activation' ? 'layui-this' : '' %>"><a href="/yuedu/activation/index.html"><%= siteMeta.activationNavLabel %></a></li>
               <li><a target="_blank" href="<%= siteMeta.topExternalUrl %>"><%= siteMeta.topExternalLabel %></a></li>
+              <% if (siteMode === 'ios') { %>
+                <li><a href="/yuedu/index/index.html#help-request-panel">求书源</a></li>
+              <% } %>
             </ul>
           </div>
         </div>
