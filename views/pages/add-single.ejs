@@ -5,8 +5,17 @@
     <% if (!currentUser) { %>
       <blockquote class="layui-elem-quote layui-font-red">当前未登录，提交会提示失败。请先登录后再发布。</blockquote>
     <% } %>
+    <% if (helpRequest) { %>
+      <blockquote class="layui-elem-quote" style="border-left-color: #ef2d24;">
+        当前正在响应求助：<strong><%= helpRequest.title %></strong><br />
+        <span class="layui-font-12"><%= helpRequest.detail %></span>
+      </blockquote>
+    <% } %>
 
     <form class="layui-form layui-form-pane" id="singleAddForm">
+      <% if (helpRequest) { %>
+        <input type="hidden" name="help_request_id" value="<%= helpRequest.id %>" />
+      <% } %>
       <div class="layui-form-item layui-form-text">
         <label class="layui-form-label layui-font-red">源代码(*)</label>
         <div class="layui-input-block">
