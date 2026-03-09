@@ -100,6 +100,16 @@ npm run seed
 - 若部署环境路径不同，可修改 `.env` 的 `GO_BIN`、`XBS_TOOL_PATH` 与 `XBSREBUILD_ROOT`。
 - 运行转换时需要可用的 `python3` 与 `go`（或安装 `xbsrebuild` 可执行文件到 PATH）。
 
+### 导入闪退排查（StandarReader 2.56.1）
+
+- 已确认一类高频崩溃根因：`bookWorld.categories` 使用数组形态，旧版客户端在导入时会把该字段按字典读取并调用 `allKeys`，触发 `NSInvalidArgumentException: -[__NSArrayI allKeys]`。
+- 兼容策略：
+  - 将 `bookWorld.categories` 自动展开为 `bookWorld.{分类名}` 字典结构（每个分类一个 `bookWorld` action）。
+  - `enable` 强制输出 `1/0`。
+  - `responseFormatType` 统一小写（`html/json/xml/text`）。
+  - `requestInfo` 对象自动转为字符串模板或 `@js:return {...};`。
+- 详细案例与验证流程见：[XBS 导入闪退排查](/Users/mantou/Documents/idea/3.5/docs/xbs-import-crash-troubleshooting.md)。
+
 ## 主要路由
 
 - `GET /yuedu/:type/index.html`

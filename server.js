@@ -117,6 +117,7 @@ if (String(process.env.XBSREBUILD_ROOT || '').trim() && XBSREBUILD_CONFIG_ROOT !
 const XIANGSE_SOURCE_TYPES = new Set(['text', 'comic', 'video', 'audio']);
 const XIANGSE_REQUIRED_ACTIONS = ['searchBook', 'bookDetail', 'chapterList', 'chapterContent'];
 const XIANGSE_REQUESTINFO_REQUIRED_ACTIONS = new Set(['searchBook']);
+const XIANGSE_RESPONSE_FORMAT_TYPES = new Set(['html', 'json', 'xml', 'text']);
 const XIANGSE_XPATH_FIELDS = [
   'list',
   'name',
@@ -2020,6 +2021,11 @@ function buildXbsExportPayload(data) {
 function normalizeSourceForXbs(source) {
   const out = JSON.parse(JSON.stringify(source));
   out.enable = normalizeXbsEnableValue(out.enable);
+  normalizeLegacyBookWorldStructure(out);
+  for (const [actionKey, actionValue] of Object.entries(out)) {
+    if (!isLikelyTopLevelActionObject(actionValue)) continue;
+    out[actionKey] = normalizeXiangseActionObject(actionValue, actionKey);
+  }
   return out;
 }
 
@@ -2324,9 +2330,7 @@ function normalizeXiangseShuyuanPayload(payload) {
     }
     normalized.sourceUrl = sourceUrl;
 
-    if (typeof normalized.enable !== 'boolean') {
-      normalized.enable = true;
-    }
+    normalized.enable = normalizeXbsEnableValue(normalized.enable);
 
     normalized.sourceType = normalizeSourceType(
       normalized.sourceType,
@@ -2344,16 +2348,7 @@ function normalizeXiangseShuyuanPayload(payload) {
         errors.push(`第${rowNo}条缺少动作 ${actionKey}`);
         continue;
       }
-
-      const action = { ...actionValue };
-      action.actionID = actionKey;
-      action.parserID = normalizeParserID(action.parserID);
-
-      if (action.responseFormatType === undefined || action.responseFormatType === null) {
-        action.responseFormatType = 'html';
-      } else {
-        action.responseFormatType = String(action.responseFormatType).trim();
-      }
+      const action = normalizeXiangseActionObject(actionValue, actionKey, rowNo, warnings);
 
       if (!isValidRequestInfo(action.requestInfo)) {
         if (isActionRequestInfoRequired(actionKey)) {
@@ -2368,6 +2363,14 @@ function normalizeXiangseShuyuanPayload(payload) {
       }
 
       normalized[actionKey] = action;
+    }
+
+    normalizeLegacyBookWorldStructure(normalized, rowNo, warnings);
+
+    for (const [actionKey, actionValue] of Object.entries(normalized)) {
+      if (XIANGSE_REQUIRED_ACTIONS.includes(actionKey)) continue;
+      if (!isLikelyTopLevelActionObject(actionValue)) continue;
+      normalized[actionKey] = normalizeXiangseActionObject(actionValue, actionKey, rowNo, warnings);
     }
 
     normalizedList.push(normalized);
@@ -2500,6 +2503,240 @@ function normalizeParserID(parserID) {
   const parser = String(parserID || 'DOM').trim().toUpperCase();
   if (parser === 'JS') return 'JS';
   return 'DOM';
+}
+
+function isLikelyTopLevelActionObject(value) {
+  if (!isPlainObject(value)) return false;
+  if (Object.keys(value).length < 1) return false;
+  return (
+    value.actionID !== undefined ||
+    value.requestInfo !== undefined ||
+    value.responseFormatType !== undefined ||
+    value.parserID !== undefined
+  );
+}
+
+function normalizeXiangseActionObject(actionValue, actionKey, rowNo, warnings) {
+  const action = { ...actionValue };
+  if (!firstNonEmptyString(action.actionID)) {
+    action.actionID = actionKey;
+  }
+  action.parserID = normalizeParserID(action.parserID);
+  const normalizedResponseFormatType = normalizeResponseFormatType(action.responseFormatType);
+  const rawResponseFormatType = String(action.responseFormatType ?? '').trim();
+  if (warnings && rowNo) {
+    if (!rawResponseFormatType) {
+      warnings.push(`第${rowNo}条 ${actionKey}.responseFormatType 为空，已补充 html`);
+    } else if (normalizedResponseFormatType !== rawResponseFormatType) {
+      warnings.push(
+        `第${rowNo}条 ${actionKey}.responseFormatType=${rawResponseFormatType} 已规范为 ${normalizedResponseFormatType}`
+      );
+    }
+  }
+  action.responseFormatType = normalizedResponseFormatType;
+  action.requestInfo = normalizeXiangseRequestInfo(action.requestInfo, actionKey, rowNo, warnings);
+  return action;
+}
+
+function normalizeResponseFormatType(value) {
+  const text = String(value ?? '')
+    .trim()
+    .toLowerCase();
+  if (!text) return 'html';
+  if (text === 'htm') return 'html';
+  if (XIANGSE_RESPONSE_FORMAT_TYPES.has(text)) return text;
+  return 'html';
+}
+
+function normalizeXiangseRequestInfo(requestInfo, actionKey, rowNo, warnings) {
+  if (typeof requestInfo === 'string') {
+    return requestInfo.trim();
+  }
+  if (!isPlainObject(requestInfo)) {
+    return requestInfo;
+  }
+
+  const normalizedObj = canonicalizeRequestInfoObject(requestInfo);
+  const keys = Object.keys(normalizedObj);
+  if (keys.length === 1 && keys[0] === 'url') {
+    const urlText = String(normalizedObj.url || '').trim();
+    if (urlText) {
+      if (warnings && rowNo) {
+        warnings.push(`第${rowNo}条 ${actionKey}.requestInfo 对象已转为字符串模板`);
+      }
+      return urlText;
+    }
+  }
+
+  if (warnings && rowNo) {
+    warnings.push(`第${rowNo}条 ${actionKey}.requestInfo 对象已转为 @js`);
+  }
+  return `@js:return ${JSON.stringify(normalizedObj)};`;
+}
+
+function canonicalizeRequestInfoObject(requestInfo) {
+  const source = JSON.parse(JSON.stringify(requestInfo || {}));
+  const out = {};
+  const url = firstNonEmptyString(source.url, source.URL, source.uri);
+  if (url) out.url = url;
+
+  let postFlag = toBooleanOrUndefined(source.POST);
+  if (postFlag === undefined) {
+    postFlag = toBooleanOrUndefined(source.post);
+  }
+  if (postFlag === undefined) {
+    const method = String(source.method || source.httpMethod || '')
+      .trim()
+      .toUpperCase();
+    if (method) {
+      postFlag = method === 'POST';
+    }
+  }
+  if (postFlag) {
+    out.POST = true;
+  }
+
+  const httpParams = firstPlainObject(source.httpParams, source.params, source.data);
+  if (httpParams && Object.keys(httpParams).length > 0) {
+    out.httpParams = httpParams;
+  }
+
+  const httpHeaders = firstPlainObject(source.httpHeaders, source.headers);
+  if (httpHeaders && Object.keys(httpHeaders).length > 0) {
+    out.httpHeaders = httpHeaders;
+  }
+
+  const knownKeys = new Set([
+    'url',
+    'URL',
+    'uri',
+    'method',
+    'httpMethod',
+    'POST',
+    'post',
+    'httpParams',
+    'params',
+    'data',
+    'httpHeaders',
+    'headers',
+  ]);
+  for (const [key, value] of Object.entries(source)) {
+    if (knownKeys.has(key)) continue;
+    out[key] = value;
+  }
+
+  return out;
+}
+
+function toBooleanOrUndefined(value) {
+  if (value === undefined || value === null || String(value).trim() === '') {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  const text = String(value)
+    .trim()
+    .toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(text)) return true;
+  if (['0', 'false', 'no', 'off'].includes(text)) return false;
+  return undefined;
+}
+
+function firstPlainObject(...values) {
+  for (const value of values) {
+    if (isPlainObject(value)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeLegacyBookWorldStructure(source, rowNo, warnings) {
+  if (!isPlainObject(source)) return;
+  if (!isPlainObject(source.bookWorld)) return;
+
+  const bookWorld = source.bookWorld;
+
+  if (isLikelyTopLevelActionObject(bookWorld) && Array.isArray(bookWorld.categories)) {
+    const baseAction = { ...bookWorld };
+    const rawCategories = Array.isArray(baseAction.categories) ? [...baseAction.categories] : [];
+    delete baseAction.categories;
+    const normalizedBaseAction = normalizeXiangseActionObject(baseAction, 'bookWorld', rowNo, warnings);
+
+    const expanded = {};
+    rawCategories.forEach((raw, idx) => {
+      const category = normalizeBookWorldCategoryItem(raw);
+      if (!category) return;
+
+      const item = JSON.parse(JSON.stringify(normalizedBaseAction));
+      item.requestInfo = injectCategoryIntoRequestInfo(item.requestInfo, category.value, category.title);
+      const preferred = clipText(category.title || category.value || `分类${idx + 1}`, 120);
+      const key = ensureUniqueMapKey(expanded, preferred);
+      expanded[key] = item;
+    });
+
+    if (Object.keys(expanded).length > 0) {
+      source.bookWorld = expanded;
+      if (warnings && rowNo) {
+        warnings.push(`第${rowNo}条 bookWorld.categories 已展开为分类字典结构（兼容旧版客户端）`);
+      }
+      return;
+    }
+
+    source.bookWorld = normalizedBaseAction;
+    if (warnings && rowNo) {
+      warnings.push(`第${rowNo}条 bookWorld.categories 无有效分类，已忽略该字段`);
+    }
+    return;
+  }
+
+  if (isLikelyTopLevelActionObject(bookWorld)) {
+    source.bookWorld = normalizeXiangseActionObject(bookWorld, 'bookWorld', rowNo, warnings);
+    return;
+  }
+
+  const normalizedMap = {};
+  for (const [key, value] of Object.entries(bookWorld)) {
+    if (isLikelyTopLevelActionObject(value)) {
+      normalizedMap[key] = normalizeXiangseActionObject(value, 'bookWorld', rowNo, warnings);
+    } else {
+      normalizedMap[key] = value;
+    }
+  }
+  source.bookWorld = normalizedMap;
+}
+
+function normalizeBookWorldCategoryItem(raw) {
+  if (isPlainObject(raw)) {
+    const value = firstNonEmptyString(raw.id, raw.value, raw.key, raw.name);
+    const title = firstNonEmptyString(raw.name, raw.title, raw.label, raw.id, raw.value);
+    if (!value && !title) return null;
+    return {
+      title: title || value,
+      value: value || title,
+    };
+  }
+
+  const text = String(raw || '').trim();
+  if (!text) return null;
+  return {
+    title: text,
+    value: text,
+  };
+}
+
+function injectCategoryIntoRequestInfo(requestInfo, categoryValue, categoryTitle) {
+  if (typeof requestInfo !== 'string') return requestInfo;
+  const value = String(categoryValue || '').trim();
+  const title = String(categoryTitle || '').trim();
+  if (!value && !title) return requestInfo;
+
+  return requestInfo
+    .replace(/\{category\}/g, value || title)
+    .replace(/%@category/g, value || title)
+    .replace(/%@filter/g, value || title)
+    .replace(/\{categoryName\}/g, title || value);
 }
 
 function patchXiangseDomXPath(action, actionKey, rowNo, warnings) {
